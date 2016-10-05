@@ -43298,9 +43298,9 @@ var Camera = function () {
      * @type {THREE.PerspectiveCamera}
      * @private
      */
-    this._camera = new _three2.default.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    this._camera = new _three2.default.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    this.camera.position.set(0, 10, 10);
+    this.camera.position.set(10, 10, 10);
     this.camera.lookAt(_Scene2.default.scene.position);
   }
 
@@ -43398,7 +43398,7 @@ var Map = function () {
 
             for (var i = 0; i < terrainGeometry.vertices.length; i++) {
                 var vertex = terrainGeometry.vertices[i];
-                vertex.z = NoiseGen.noise(vertex.x / 10, vertex.y / 10) * 2;
+                vertex.z = NoiseGen.noise(vertex.x / 10, vertex.y / 10);
             }
 
             terrainGeometry.computeFaceNormals();

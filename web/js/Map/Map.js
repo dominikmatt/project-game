@@ -31,7 +31,7 @@ class Map {
                 wireframe: true
             }),
             .8, // high friction
-            1git s.4 // low restitution
+            1.4 // low restitution
         );
 
         var NoiseGen = new SimplexNoise();
@@ -40,7 +40,7 @@ class Map {
 
         for ( var i = 0; i < terrainGeometry.vertices.length; i++ ) {
             var vertex = terrainGeometry.vertices[i];
-            vertex.z = NoiseGen.noise( vertex.x / 10, vertex.y / 10 ) * 2;
+            vertex.z = NoiseGen.noise( vertex.x / 10, vertex.y / 10 );
         }
 
         terrainGeometry.computeFaceNormals();
