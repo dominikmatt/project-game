@@ -2,7 +2,9 @@
 
 import THREE from 'three';
 import scene from './../Scene.js';
+import AmbientLight from './../Lights/Ambient.js';
 var Physijs = require('physijs-browserify')(THREE);
+var collada = require('three-loaders-collada')(THREE);
 
 /**
  * @type {Symbol}
@@ -12,129 +14,127 @@ let singleton = Symbol();
 /**
  * @type {Symbol}
  */
-let singletonEnforcer = Symbol()
+let singletonEnforcer = Symbol();
 
+/**
+ * @class Map
+ */
 class Map {
     constructor(enforcer) {
-        if(enforcer != singletonEnforcer) throw "Cannot construct singleton Camera";
-    }
+        if (enforcer != singletonEnforcer) throw "Cannot construct singleton Map";
 
-    /**
-     * create terrain
-     */
-    createTerrain() {
-        console.debug('create terrain…');
-        
-        let terrainMaterial = Physijs.createMaterial(
-            new THREE.MeshBasicMaterial({
-                color: 0x0066ff,
-                wireframe: true
-            }),
-            .8, // high friction
-            1.4 // low restitution
-        );
+        this.colladaLoader = new THREE.ColladaLoader();
+        this._terrain = null;
+        console.debug('create map…');
 
-        var NoiseGen = new SimplexNoise();
-
-        var terrainGeometry = new THREE.PlaneGeometry( 100, 100, 100, 100 );
-
-        for ( var i = 0; i < terrainGeometry.vertices.length; i++ ) {
-            var vertex = terrainGeometry.vertices[i];
-            vertex.z = NoiseGen.noise( vertex.x / 10, vertex.y / 10 );
-        }
-
-        terrainGeometry.computeFaceNormals();
-        terrainGeometry.computeVertexNormals();
-
-        var terrain = new Physijs.HeightfieldMesh(
-            terrainGeometry,
-            terrainMaterial,
-            1, // mass
-            100,
-            100
-        );
-
-        terrain.rotation.x = -0.5 * Math.PI;
-
-        scene.scene.add( terrain );
-    }
-
-    createSphere() {
-        var sphereGeometry = new THREE.SphereGeometry(500, 20, 20);
-        var sphereMaterial = new THREE.MeshLambertMaterial({
-            color: 0x7777ff,
-            wireframe: false
-        });
-        var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-
-        sphere.position.x = 20;
-        sphere.position.y = 4;
-        sphere.position.z = 2;
-        sphere.castShadow = true;
-        scene.scene.add(sphere);
-
-        setInterval(() => {
-            this.doCreateShape();
-        }, 1000);
-    }
-
-    doCreateShape () {
-        var addshapes = true,
-            shapes = 0,
-            box_geometry = new THREE.BoxGeometry( 3, 3, 3 ),
-            sphere_geometry = new THREE.SphereGeometry( 1.5, 32, 32 ),
-            cylinder_geometry = new THREE.CylinderGeometry( 2, 2, 1, 32 ),
-            cone_geometry = new THREE.CylinderGeometry( 0, 2, 4, 32 ),
-            octahedron_geometry = new THREE.OctahedronGeometry( 1.7, 1 ),
-            torus_geometry = new THREE.TorusKnotGeometry ( 1.7, .2, 32, 4 ),
-            doCreateShape;
-        var shape, material = new THREE.MeshLambertMaterial({ opacity: 0, transparent: false, wireframe: true });
-
-        switch ( Math.floor(Math.random() * 2) ) {
-            case 0:
-                shape = new Physijs.BoxMesh(
-                    box_geometry,
-                    material
-                );
-                break;
-
-            case 1:
-                shape = new Physijs.SphereMesh(
-                    sphere_geometry,
-                    material,
-                    undefined,
-                    { restitution: Math.random() * 1.5 }
-                );
-                break;
-        }
-
-        shape.material.color.setRGB( Math.random() * 100 / 100, Math.random() * 100 / 100, Math.random() * 100 / 100 );
-        shape.castShadow = true;
-        shape.receiveShadow = true;
-
-        shape.position.set(
-            Math.random() * 30 - 15,
-            20,
-            Math.random() * 30 - 15
-        );
-
-        shape.rotation.set(
-            0, 0, 0
-        );
-
-        console.debug('add shape…');
-        scene.scene.add( shape );
+        new AmbientLight();
     }
 
     /**
      * @returns {Map}
      */
     static get instance() {
-        if(!this[singleton]) {
+        if (!this[singleton]) {
             this[singleton] = new Map(singletonEnforcer);
         }
 
         return this[singleton];
+    }
+
+    /**
+     * create terrain for map
+     */
+    createTerrain() {
+        console.debug('create terrain…');
+
+        var material = this.getCustomMaterial();
+
+        this.colladaLoader.load('/example/models/terrain-test-1/RollingHills.dae', (collada) => {
+            collada.scene.children.forEach((child) => {
+                child.children.forEach((sub) => {
+                    if (sub.name === 'TerrainCell') {
+                        var mesh = sub.children[0];
+                        mesh.material = material;
+                    }
+                });
+            });
+
+            this._terrain = collada.scene;
+
+            scene.scene.add(collada.scene);
+        });
+
+        this.createOcean();
+    }
+
+    /**
+     * create ocean
+     */
+    createOcean() {
+        var waterGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1 );
+        var waterTex = new THREE.ImageUtils.loadTexture('/assets/terrain/water-512.jpg');
+        var waterMaterial = new THREE.MeshBasicMaterial({
+            map: waterTex,
+            transparent:true,
+            opacity:0.40
+        });
+        var water = new THREE.Mesh(waterGeometry, waterMaterial );
+
+        waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
+        waterTex.repeat.set(2,2);
+
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = 1;
+
+        scene.scene.add(water);
+    }
+
+    /**
+     * returns a shader material for terrain
+     *
+     * @returns {THREE.ShaderMaterial}
+     */
+    getCustomMaterial() {
+        // load Ocean texture
+        var oceanTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/materials/ocean.jpg' );
+        oceanTexture.wrapS = oceanTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Sand texture
+        var sandyTexture = THREE.ImageUtils.loadTexture( '/assets/terrain/materials/Sahara.png' );
+        sandyTexture.wrapS = sandyTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Grass texture
+        var grassTexture = THREE.ImageUtils.loadTexture( '/assets/terrain/materials/grass.png' );
+        grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
+        grassTexture.repeat.set(512,512);
+
+        // load Rocky texture
+        var rockyTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/materials/rock.png' );
+        rockyTexture.wrapS = rockyTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Snow texture
+        var snowyTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/snow-512.jpg' );
+        snowyTexture.wrapS = snowyTexture.wrapT = THREE.RepeatWrapping;
+
+        var customUniforms = {
+            oceanTexture:    { type: "t", value: oceanTexture },
+            sandyTexture:    { type: "t", value: sandyTexture },
+            grassTexture:    { type: "t", value: grassTexture },
+            rockyTexture:    { type: "t", value: rockyTexture },
+            snowyTexture:    { type: "t", value: snowyTexture }
+        };
+
+        // create custom material from the shader code above
+        // that is within specially labelled script tags
+        var customMaterial = new THREE.ShaderMaterial({
+            uniforms: customUniforms,
+            vertexShader: document.getElementById('vertexShader').textContent,
+            fragmentShader: document.getElementById('fragmentShader').textContent,
+            wireframe: false,
+            light: true
+        });
+
+        return customMaterial;
     }
 
     /**
@@ -145,4 +145,4 @@ class Map {
     }
 }
 
-export default Map;
+export default Map.instance;

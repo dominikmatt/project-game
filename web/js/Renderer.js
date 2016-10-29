@@ -18,6 +18,9 @@ let singletonEnforcer = Symbol()
  * @class Renderer
  */
 class Renderer {
+    /**
+     * @param {Symbol} enforcer
+     */
     constructor(enforcer) {
         if(enforcer != singletonEnforcer) throw "Cannot construct singleton Renderer";
 
@@ -29,6 +32,8 @@ class Renderer {
 
         this._renderer.setClearColor(0x000000);
         this._renderer.setSize(window.innerWidth, window.innerHeight);
+        this._renderer.shadowMapEnabled = true;
+        this._renderer.shadowMapSoft = true;
     }
 
     /**
@@ -46,7 +51,7 @@ class Renderer {
      * add axis
      */
     addAxis() {
-        let axes = new THREE.AxisHelper(20);
+        let axes = new THREE.AxisHelper(200);
 
         scene.scene.add(axes);
     }

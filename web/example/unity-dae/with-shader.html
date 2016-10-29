@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="viewport"></div>
+<script type="text/javascript" src="/example/lib/three.js"></script>
+<script type="text/javascript" src="/example/lib/ColladaLoader.js"></script>
+<script type="text/javascript" src="/example/lib/FirstPersonControl.js"></script>
+<script type="text/javascript">
+    var scene;
+    var camera;
+    var camControls;
+    var renderer;
+    var water;
+    var terrain;
+    var loader = new THREE.ColladaLoader();
+    var clock = new THREE.Clock();
+
+    window.onload = function() {
+        initScene();
+    };
+
+    var initScene = function() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 160, 0);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        var axes = new THREE.AxisHelper(20);
+        scene.add(axes);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document
+                .getElementById('viewport')
+                .appendChild(renderer.domElement);
+
+        initControls();
+        createWater();
+        createLight();
+        createTree();
+        reigsterEventListener();
+        render();
+    };
+
+    var initControls = function() {
+        camControls = new THREE.FirstPersonControls(camera);
+        camControls.lookSpeed = 0.1;
+        camControls.movementSpeed = 50;
+        camControls.noFly = true;
+        camControls.lookVertical = true;
+        camControls.constrainVertical = true;
+        camControls.verticalMin = 1.0;
+        camControls.verticalMax = 2.0;
+        camControls.lon = 0;
+        camControls.lat = -150;
+    };
+
+    var render = function() {
+        var delta = clock.getDelta();
+        camera.updateProjectionMatrix();
+        camControls.update(delta);
+
+        requestAnimationFrame(render);
+        renderer.render(scene, camera);
+    };
+
+    var createWater = function() {
+        var waterGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1 );
+        var waterTex = new THREE.ImageUtils.loadTexture('/assets/terrain/water-512.jpg');
+        var waterMaterial = new THREE.MeshBasicMaterial({
+            map: waterTex,
+            transparent:true,
+            opacity:0.40
+        });
+        var water = new THREE.Mesh(waterGeometry, waterMaterial );
+
+        waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
+        waterTex.repeat.set(2,2);
+
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = 1;
+        scene.add(water);
+    };
+
+    var createLight = function() {
+        var ambientLight = new THREE.AmbientLight(0xE0E0E0);
+        scene.add(ambientLight);
+
+        var spotlight = new THREE.SpotLight(0xFFFFFF);
+        spotlight.position.set(50, 60, 0);
+        spotlight.lookAt(scene);
+
+        var spotlightHelper = new THREE.SpotLightHelper(spotlight);
+
+        scene.add(spotlightHelper);
+    };
+
+    var createTree = function() {
+        var material = getCustomMaterial();
+        loader.load('/example/models/terrain-test-1/RollingHills.dae', function(collada) {
+            collada.scene.children.forEach(function(child) {
+                child.children.forEach(function(sub) {
+                    if (sub.name === 'TerrainCell') {
+                        var mesh = sub.children[0];
+                        mesh.material = material;
+                        /* mesh.material = new THREE.MeshPhongMaterial({
+                         color: 0x00ff00,
+                         map: THREE.ImageUtils.loadTexture( '/assets/terrain/materials/grass.png' ),
+                         vertexColors: THREE.VertexColors,
+                         wireframe: false
+                         });*/
+                    }
+                });
+            });
+            terrain = collada.scene;
+            scene.add(collada.scene);
+        });
+    };
+
+    var getCustomMaterial = function() {
+        // load Ocean texture
+        var oceanTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/materials/ocean.jpg' );
+        oceanTexture.wrapS = oceanTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Sand texture
+        var sandyTexture = THREE.ImageUtils.loadTexture( '/assets/terrain/materials/Sahara.png' );
+        sandyTexture.wrapS = sandyTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Grass texture
+        var grassTexture = THREE.ImageUtils.loadTexture( '/assets/terrain/materials/grass.png' );
+        grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
+        grassTexture.repeat.set(512,512);
+
+        // load Rocky texture
+        var rockyTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/materials/rock.png' );
+        rockyTexture.wrapS = rockyTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Snow texture
+        var snowyTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/snow-512.jpg' );
+        snowyTexture.wrapS = snowyTexture.wrapT = THREE.RepeatWrapping;
+
+        var customUniforms = {
+            oceanTexture:    { type: "t", value: oceanTexture },
+            sandyTexture:    { type: "t", value: sandyTexture },
+            grassTexture:    { type: "t", value: grassTexture },
+            rockyTexture:    { type: "t", value: rockyTexture },
+            snowyTexture:    { type: "t", value: snowyTexture }
+        };
+
+        // create custom material from the shader code above
+        // that is within specially labelled script tags
+        var customMaterial = new THREE.ShaderMaterial({
+            uniforms: customUniforms,
+            vertexShader: document.getElementById('vertexShader').textContent,
+            fragmentShader: document.getElementById('fragmentShader').textContent,
+            wireframe: false,
+            light: true
+        });
+
+        return customMaterial;
+    };
+
+    var reigsterEventListener = function() {
+
+        var raycaster = new THREE.Raycaster();
+        window.addEventListener( 'click', function(event) {
+            var mouse = {};
+            mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+            mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+            // calculate mouse position in normalized device coordinates
+            // (-1 to +1) for both components
+            raycaster.setFromCamera( mouse, camera );
+
+            // See if the ray from the camera into the world hits one of our meshes
+            var objects = [];
+
+            terrain.children.forEach(function(child) {
+                child.children.forEach(function(sub) {
+                    objects.push(sub);
+                });
+            });
+
+            var intersects = raycaster.intersectObjects( objects, true );
+            // Toggle rotation bool for meshes that we clicked
+            var match = intersects[0];
+            console.log(match.point.y);
+            if (match) {
+                var geometry = match.object.geometry;
+                var material = match.object.material;
+                var face = geometry.faces[match.faceIndex];
+
+                addTree(match.point);
+            }
+        });
+    };
+
+    var addTree = function(point) {
+        loader.load('/example/models/Tree.dae', function(collada) {
+            collada.scene.position.set(point.x, point.y, point.z);
+            scene.add(collada.scene);
+        });
+    }
+</script>
+<script id="fragmentShader" type="x-shader/x-vertex">
+    uniform sampler2D oceanTexture;
+    uniform sampler2D sandyTexture;
+    uniform sampler2D grassTexture;
+    uniform sampler2D rockyTexture;
+    uniform sampler2D snowyTexture;
+
+    varying vec2 vUv;
+    varying vec3 my_pos;
+
+    void main()
+    {
+        vec4 ocean = (smoothstep(-100.0, -15.0, my_pos.y) - smoothstep(-15.0, -10.0, my_pos.y)) * texture2D( oceanTexture, vUv * 25.0 );
+        vec4 sandy = (smoothstep(-15.0, -10.0, my_pos.y) - smoothstep(-10.0, 15.0, my_pos.y)) * texture2D( sandyTexture, vUv * 25.0 );
+        vec4 grass = (smoothstep(-10.0, 15.0, my_pos.y) - smoothstep(14.0, 55.0, my_pos.y)) * texture2D( grassTexture, vUv * 25.0 );
+        vec4 rocky = (smoothstep(14.0, 55.0, my_pos.y)) * texture2D( rockyTexture, vUv * 25.0 );
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) + ocean + sandy + grass + rocky ; //, 1.0);
+    }
+    </script>
+<script id="vertexShader" type="x-shader/x-vertex">
+    varying vec2 vUv;
+    varying vec3 my_pos;
+
+    void main() {
+        vUv = uv;
+        vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        my_pos = position.xyz;
+
+        gl_Position = projectionMatrix *
+            modelViewMatrix *
+            vec4(position ,1.0);
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="viewport"></div>
+<script type="text/javascript" src="/example/lib/three.js"></script>
+<script type="text/javascript" src="/example/lib/ColladaLoader.js"></script>
+<script type="text/javascript">
+    var scene;
+    var camera;
+    var renderer;
+    var plane;
+
+    window.onload = function() {
+        initScene();
+    };
+
+    var initScene = function() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth, window.innerHeight, 0.1, 1000);
+        renderer = new THREE.WebGLRenderer();
+        renderer.setClearColor(0xEEEEEE);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document
+                .getElementById('viewport')
+                .appendChild(renderer.domElement);
+
+        createPlane();
+    };
+
+    var createPlane = function() {
+        console.debug('create plane');
+        var planeGeometry = new THREE.PlaneGeometry(1000, 1000, 300, 300);
+        var planeMaterial = new THREE.MeshNormalMaterial({
+            color: 0x00ff00,
+            wireframe: true
+        });
+
+        plane = new THREE.Mesh(planeGeometry, planeMaterial);
+
+        scene.add(plane);
+    }
+</script>
+</body>
+</html>

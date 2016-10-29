@@ -11,11 +11,14 @@ let singleton = Symbol();
 /**
  * @type {Symbol}
  */
-let singletonEnforcer = Symbol()
+let singletonEnforcer = Symbol();
 
 
 /**
  * @class Camera
+ * @deprecated
+ *
+ * TODO: move camera to player
  */
 class Camera {
     constructor(enforcer) {
@@ -25,9 +28,9 @@ class Camera {
          * @type {THREE.PerspectiveCamera}
          * @private
          */
-        this._camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this._camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-        this.camera.position.set(10, 10, 10);
+        this.camera.position.set(100, 100, 10);
         this.camera.lookAt(scene.scene.position);
     }
 
@@ -40,6 +43,10 @@ class Camera {
         }
 
         return this[singleton];
+    }
+
+    update(raycaster, mouse) {
+
     }
 
     /**

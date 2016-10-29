@@ -13,6 +13,12 @@ let singleton = Symbol();
  */
 let singletonEnforcer = Symbol()
 
+/**
+ * Scene of the Game.
+ * Created with PhysiJS
+ *
+ * @class Scene
+ */
 class Scene {
     constructor(enforcer) {
         if(enforcer != singletonEnforcer) throw "Cannot construct singleton Scene";
