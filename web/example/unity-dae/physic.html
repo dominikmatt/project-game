@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+<div id="viewport"></div>
+<script type="text/javascript" src="/example/lib/three.js"></script>
+<script type="text/javascript" src="/example/lib/physi.js"></script>
+<script type="text/javascript" src="/example/lib/ColladaLoader.js"></script>
+<script type="text/javascript">
+    var scene;
+    var camera;
+    var camControls;
+    var renderer;
+    var water;
+    var terrain;
+    var loader = new THREE.ColladaLoader();
+    var clock = new THREE.Clock();
+    var player;
+    var controls = {
+        left: false,
+        up: false,
+        right: false,
+        down: false
+    };
+    var velocity = new THREE.Vector3();
+    var walkingSpeed = 500;
+
+    Physijs.scripts.worker = '/example/lib/physijs_worker.js';
+
+    window.onload = function() {
+        initScene();
+    };
+
+    var initScene = function() {
+        scene = new Physijs.Scene({ fixedTimeStep: 1 / 120 });
+        scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
+        camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 5, 0);
+
+        var axes = new THREE.AxisHelper(20);
+        scene.add(axes);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document
+                .getElementById('viewport')
+                .appendChild(renderer.domElement);
+
+        initControls();
+        createWater();
+        createLight();
+        createTree();
+        addPlayer();
+        reigsterEventListener();
+        render();
+    };
+
+    var render = function() {
+        var delta = clock.getDelta();
+        camera.updateProjectionMatrix();
+        updateControls(delta);
+
+        requestAnimationFrame(render);
+        renderer.render(scene, camera);
+        scene.simulate(); // run physics
+    };
+
+    var createWater = function() {
+        var waterGeometry = new THREE.PlaneGeometry(1000, 1000, 1, 1 );
+        var waterTex = new THREE.ImageUtils.loadTexture('/assets/terrain/water-512.jpg');
+        var waterMaterial = new THREE.MeshBasicMaterial({
+            map: waterTex,
+            transparent:true,
+            opacity:0.40
+        });
+        var water = new Physijs.PlaneMesh(waterGeometry, waterMaterial );
+
+        waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
+        waterTex.repeat.set(2,2);
+
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = 1;
+        scene.add(water);
+    };
+
+    var createLight = function() {
+        var ambientLight = new THREE.AmbientLight(0xE0E0E0);
+        scene.add(ambientLight);
+
+        var spotlight = new THREE.SpotLight(0xFFFFFF);
+        spotlight.position.set(50, 60, 0);
+        spotlight.lookAt(scene);
+
+        var spotlightHelper = new THREE.SpotLightHelper(spotlight);
+
+        scene.add(spotlightHelper);
+    };
+
+    var createTree = function() {
+        var material = getCustomMaterial();
+        loader.load('/example/models/terrain-test-1/RollingHills.dae', function(collada) {
+            collada.scene.children.forEach(function(child) {
+                child.children.forEach(function(sub) {
+                    if (sub.name === 'TerrainCell') {
+                        var mesh = sub.children[0];
+                        var box = new THREE.Box3().setFromObject( mesh );
+                        console.log( box.min, box.max, box.size() );
+                        sub.children[0] = new Physijs.HeightfieldMesh(
+                            mesh.geometry,
+                            material,
+                            0
+                        );
+                    }
+                });
+            });
+            terrain = collada.scene;
+            scene.add(collada.scene);
+        });
+    };
+
+    var getCustomMaterial = function() {
+        // load Ocean texture
+        var oceanTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/materials/ocean.jpg' );
+        oceanTexture.wrapS = oceanTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Sand texture
+        var sandyTexture = THREE.ImageUtils.loadTexture( '/assets/terrain/materials/Sahara.png' );
+        sandyTexture.wrapS = sandyTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Grass texture
+        var grassTexture = THREE.ImageUtils.loadTexture( '/assets/terrain/materials/grass.png' );
+        grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
+        grassTexture.repeat.set(512,512);
+
+        // load Rocky texture
+        var rockyTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/materials/rock.png' );
+        rockyTexture.wrapS = rockyTexture.wrapT = THREE.RepeatWrapping;
+
+        // load Snow texture
+        var snowyTexture = new THREE.ImageUtils.loadTexture( '/assets/terrain/snow-512.jpg' );
+        snowyTexture.wrapS = snowyTexture.wrapT = THREE.RepeatWrapping;
+
+        var customUniforms = {
+            oceanTexture:    { type: "t", value: oceanTexture },
+            sandyTexture:    { type: "t", value: sandyTexture },
+            grassTexture:    { type: "t", value: grassTexture },
+            rockyTexture:    { type: "t", value: rockyTexture },
+            snowyTexture:    { type: "t", value: snowyTexture }
+        };
+
+        // create custom material from the shader code above
+        // that is within specially labelled script tags
+        var customMaterial = new THREE.ShaderMaterial({
+            uniforms: customUniforms,
+            vertexShader: document.getElementById('vertexShader').textContent,
+            fragmentShader: document.getElementById('fragmentShader').textContent,
+            wireframe: false,
+            light: true
+        });
+
+        var friction = 0.8; // high friction
+        var restitution = 0.3; // low restitution
+        console.debug('create');
+        customMaterial = Physijs.createMaterial(
+                customMaterial,
+                friction,
+                restitution
+        );
+
+        return customMaterial;
+    };
+
+    var reigsterEventListener = function() {
+
+        window.addEventListener( 'keydown', onKeyDown);
+        window.addEventListener( 'keyup', onKeyUp);
+    };
+
+    var addPlayer = function(point) {
+        var friction = 0.8; // high friction
+        var restitution = 0.3; // low restitution
+
+        var material = Physijs.createMaterial(
+                new THREE.MeshBasicMaterial({ color: 0x888888 }),
+                friction,
+                restitution
+        );
+
+// Create a cube with friction of .8 and restitution of .3
+        player = new Physijs.BoxMesh(
+                new THREE.CubeGeometry( 2, 4, 2 ),
+                material
+        );
+
+        player.position.set(0, 5, -50);
+        scene.add(player);
+
+        document.addEventListener( 'mousemove', function() {
+            var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+            var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+            player.__dirtyRotation = true;
+            player.rotation.y -= movementX * 0.002;
+        }, false );
+
+        player.add(camera);
+        camera.lookAt(player.position);
+    };
+
+    var addTree = function(point) {
+        loader.load('/example/models/Tree.dae', function(collada) {
+            collada.scene.position.set(point.x, point.y, point.z);
+            scene.add(collada.scene);
+        });
+    };
+
+    var onKeyDown = function(event) {
+        switch (event.keyCode) {
+            case 37:
+            case 65:
+                controls.left = true;
+                break;
+            case 38:
+            case 87:
+                controls.up = true;
+                break;
+            case 39:
+            case 68:
+                controls.right = true;
+                break;
+            case 40:
+            case 83:
+                controls.down = true;
+                break;
+            default:
+                prevent = false;
+        }
+
+        event.preventDefault();
+    };
+
+    var onKeyUp = function(event) {
+        switch (event.keyCode) {
+            case 37:
+            case 65:
+                controls.left = false;
+                break;
+            case 38:
+            case 87:
+                controls.up = false;
+                break;
+            case 39:
+            case 68:
+                controls.right = false;
+                break;
+            case 40:
+            case 83:
+                controls.down = false;
+                break;
+            default:
+                prevent = false;
+        }
+
+        event.preventDefault();
+    };
+
+    var updateControls = function(delta) {
+        velocity.x -= velocity.x * 10.0 * delta;
+        velocity.z -= velocity.z * 10.0 * delta;
+        //velocity.y -= 9.8 * 100.0 * delta;
+
+        if (controls.up) {
+            player.position.z -= 10;
+            //velocity.z -= walkingSpeed * delta;
+        }
+
+        if (controls.down) {
+            velocity.z += walkingSpeed * delta;
+        }
+
+        if (controls.left) {
+            velocity.x -= walkingSpeed * delta;
+        }
+
+        if (controls.right) {
+            velocity.x += walkingSpeed * delta;
+        }
+
+        player.__dirtyPosition = true;
+        /*player.translateX(velocity.x * delta);
+        player.translateZ(velocity.z * delta);
+
+        player.updateMatrixWorld();*/
+    };
+
+    var initControls = function() {
+
+    };
+</script>
+<script id="fragmentShader" type="x-shader/x-vertex">
+    uniform sampler2D oceanTexture;
+    uniform sampler2D sandyTexture;
+    uniform sampler2D grassTexture;
+    uniform sampler2D rockyTexture;
+    uniform sampler2D snowyTexture;
+
+    varying vec2 vUv;
+    varying vec3 my_pos;
+
+    void main()
+    {
+        vec4 ocean = (smoothstep(-100.0, -15.0, my_pos.y) - smoothstep(-15.0, -10.0, my_pos.y)) * texture2D( oceanTexture, vUv * 25.0 );
+        vec4 sandy = (smoothstep(-15.0, -10.0, my_pos.y) - smoothstep(-10.0, 15.0, my_pos.y)) * texture2D( sandyTexture, vUv * 25.0 );
+        vec4 grass = (smoothstep(-10.0, 15.0, my_pos.y) - smoothstep(14.0, 55.0, my_pos.y)) * texture2D( grassTexture, vUv * 25.0 );
+        vec4 rocky = (smoothstep(14.0, 55.0, my_pos.y)) * texture2D( rockyTexture, vUv * 25.0 );
+        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0) + ocean + sandy + grass + rocky ; //, 1.0);
+    }
+    </script>
+<script id="vertexShader" type="x-shader/x-vertex">
+    varying vec2 vUv;
+    varying vec3 my_pos;
+
+    void main() {
+        vUv = uv;
+        vec4 pos = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        my_pos = position.xyz;
+
+        gl_Position = projectionMatrix *
+            modelViewMatrix *
+            vec4(position ,1.0);
+    }
+    </script>
+</body>
+</html>

@@ -53,8 +53,14 @@ class Map {
             collada.scene.children.forEach((child) => {
                 child.children.forEach((sub) => {
                     if (sub.name === 'TerrainCell') {
-                        var mesh = sub.children[0];
-                        mesh.material = material;
+                        /*var mesh = sub.children[0];
+                        mesh.material = material;*/
+                        console.log(sub.children[0].geometry);
+                        sub.children[0] = new Physijs.HeightfieldMesh(
+                            sub.children[0].geometry,
+                            material,
+                            0
+                        );
                     }
                 });
             });

@@ -30,7 +30,7 @@ class Camera {
          */
         this._camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-        this.camera.position.set(100, 100, 10);
+        this.camera.position.set(0, 0, 0);
         this.camera.lookAt(scene.scene.position);
     }
 

@@ -48807,7 +48807,7 @@ var Bootstrap = function () {
 
 exports.default = Bootstrap;
 
-},{"./Camera.js":5,"./Map/Map.js":7,"./Player/Player.js":8,"./Renderer.js":9,"./Scene.js":10,"physijs-browserify":1,"three":3}],5:[function(require,module,exports){
+},{"./Camera.js":5,"./Map/Map.js":7,"./Player/Player.js":9,"./Renderer.js":10,"./Scene.js":11,"physijs-browserify":1,"three":3}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -48857,7 +48857,7 @@ var Camera = function () {
      */
     this._camera = new _three2.default.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    this.camera.position.set(100, 100, 10);
+    this.camera.position.set(0, 0, 0);
     this.camera.lookAt(_Scene2.default.scene.position);
   }
 
@@ -48895,7 +48895,7 @@ var Camera = function () {
 
 exports.default = Camera.instance;
 
-},{"./Scene.js":10,"three":3}],6:[function(require,module,exports){
+},{"./Scene.js":11,"three":3}],6:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -48933,7 +48933,7 @@ var AmbientLight = function AmbientLight() {
 
 exports.default = AmbientLight;
 
-},{"./../Scene.js":10,"three":3}],7:[function(require,module,exports){
+},{"./../Scene.js":11,"three":3}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49011,8 +49011,10 @@ var Map = function () {
                 collada.scene.children.forEach(function (child) {
                     child.children.forEach(function (sub) {
                         if (sub.name === 'TerrainCell') {
-                            var mesh = sub.children[0];
-                            mesh.material = material;
+                            /*var mesh = sub.children[0];
+                            mesh.material = material;*/
+                            console.log(sub.children[0].geometry);
+                            sub.children[0] = new Physijs.HeightfieldMesh(sub.children[0].geometry, material, 0);
                         }
                     });
                 });
@@ -49126,7 +49128,7 @@ var Map = function () {
 
 exports.default = Map.instance;
 
-},{"./../Lights/Ambient.js":6,"./../Scene.js":10,"physijs-browserify":1,"three":3,"three-loaders-collada":2}],8:[function(require,module,exports){
+},{"./../Lights/Ambient.js":6,"./../Scene.js":11,"physijs-browserify":1,"three":3,"three-loaders-collada":2}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49156,6 +49158,323 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 /**
+ * @author mrdoob / http://mrdoob.com/
+ */
+
+_three2.default.PointerLockControls = function (camera) {
+
+    var scope = this;
+
+    camera.rotation.set(0, 0, 0);
+
+    var pitchObject = new _three2.default.Object3D();
+    pitchObject.add(camera);
+
+    var yawObject = new _three2.default.Object3D();
+    yawObject.position.y = 0;
+    yawObject.add(pitchObject);
+
+    var PI_2 = Math.PI / 2;
+
+    var onMouseMove = function onMouseMove(event) {
+        if (scope.enabled === false) return;
+
+        var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+        var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+        yawObject.rotation.y -= movementX * 0.002;
+        pitchObject.rotation.x -= movementY * 0.002;
+
+        pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, pitchObject.rotation.x));
+    };
+
+    this.dispose = function () {
+
+        document.removeEventListener('mousemove', onMouseMove, false);
+    };
+
+    document.addEventListener('mousemove', onMouseMove, false);
+
+    this.enabled = false;
+
+    this.getObject = function () {
+
+        return yawObject;
+    };
+
+    this.getDirection = function () {
+
+        // assumes the camera itself is not rotated
+
+        var direction = new _three2.default.Vector3(0, 0, -1);
+        var rotation = new _three2.default.Euler(0, 0, 0, "YXZ");
+
+        return function (v) {
+
+            rotation.set(pitchObject.rotation.x, yawObject.rotation.y, 0);
+
+            v.copy(direction).applyEuler(rotation);
+
+            return v;
+        };
+    }();
+};
+
+/**
+ * @class Controls
+ */
+
+var Controls = function () {
+    function Controls() {
+        _classCallCheck(this, Controls);
+
+        this.body = document.body;
+
+        this.move = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false
+        };
+        this.speed = 200;
+        this.velocity = new _three2.default.Vector3();
+
+        this.bindEvents();
+        this.controls = new _three2.default.PointerLockControls(_Camera2.default.camera);
+        this.controls.enabled = true;
+
+        _Scene2.default.scene.add(this.controls.getObject());
+    }
+
+    /**
+     * bin all DOM events
+     */
+
+
+    _createClass(Controls, [{
+        key: 'bindEvents',
+        value: function bindEvents() {
+            document.body.addEventListener('click', this.onBodyClickHandler.bind(this));
+            document.addEventListener('keydown', this.onKeyDown.bind(this), false);
+            document.addEventListener('keyup', this.onKeyUp.bind(this), false);
+        }
+
+        /**
+         * start pointer lock
+         * TODO: create instructions and move it to that component
+         *
+         * @deprecated
+         */
+
+    }, {
+        key: 'onBodyClickHandler',
+        value: function onBodyClickHandler() {
+            this.body.requestPointerLock();
+        }
+
+        /**
+         * @param {Event} event
+         */
+
+    }, {
+        key: 'onKeyDown',
+        value: function onKeyDown(event) {
+            switch (event.keyCode) {
+                case 38: // up
+                case 87:
+                    // w
+                    this.move.forward = true;
+                    break;
+                case 37: // left
+                case 65:
+                    // a
+                    this.move.left = true;
+                    break;
+                case 40: // down
+                case 83:
+                    // s
+                    this.move.backward = true;
+                    break;
+                case 39: // right
+                case 68:
+                    // d
+                    this.move.right = true;
+                    break;
+                case 32:
+                    // space
+                    // TODO: implement jump
+                    break;
+            }
+        }
+
+        /**
+         * @param {Event} event
+         */
+
+    }, {
+        key: 'onKeyUp',
+        value: function onKeyUp(event) {
+            switch (event.keyCode) {
+                case 38: // up
+                case 87:
+                    // w
+                    this.move.forward = false;
+                    break;
+                case 37: // left
+                case 65:
+                    // a
+                    this.move.left = false;
+                    break;
+                case 40: // down
+                case 83:
+                    // s
+                    this.move.backward = false;
+                    break;
+                case 39: // right
+                case 68:
+                    // d
+                    this.move.right = false;
+                    break;
+                case 32:
+                    // space
+                    // TODO: implement jump
+                    break;
+            }
+        }
+
+        /**
+         * update move position
+         *
+         * @param {float} delta
+         * @param {Player} player
+         */
+
+    }, {
+        key: 'update',
+        value: function update(delta, player) {
+            this.velocity.x -= this.velocity.x * 10.0 * delta;
+            this.velocity.z -= this.velocity.z * 10.0 * delta;
+            this.velocity.y -= 9.8 * 100.0 * delta;
+
+            if (this.move.forward) this.velocity.z -= this.speed * delta;
+            if (this.move.backward) this.velocity.z += this.speed * delta;
+            if (this.move.left) this.velocity.x -= this.speed * delta;
+            if (this.move.right) this.velocity.x += this.speed * delta;
+
+            this.controls.getObject().translateX(this.velocity.x * delta);
+            this.controls.getObject().translateY(0);
+            this.controls.getObject().translateZ(this.velocity.z * delta);
+
+            if (this.move.forward) {
+                var distance = this.toBottom(delta);
+                console.debug('distance:', distance);
+                this.controls.getObject().position.y -= distance;
+
+                if (this.controls.getObject().position.y <= 1) {
+                    this.controls.getObject().position.y = 1;
+
+                    this.speed = 100;
+                } else {
+                    this.speed = 200;
+                }
+
+                _Camera2.default.camera.position.y = this.controls.getObject().position.y;
+                //console.debug(this.controls.getObject().position);
+                //console.debug('position:', this.controls.getObject().position.y);
+            }
+        }
+
+        /**
+         * @param {flaot} delta
+         */
+
+    }, {
+        key: 'toBottom',
+        value: function toBottom(delta) {
+            if (!_Map2.default.terrain) {
+                return;
+            }
+
+            var raycaster = new _three2.default.Raycaster();
+            var velocity = new _three2.default.Vector3();
+            var distance = 0;
+            var objects = [];
+
+            raycaster.set(this.controls.getObject().position, new _three2.default.Vector3(0, -1, 0));
+            _Map2.default.terrain.children.forEach(function (child) {
+                child.children.forEach(function (sub) {
+                    objects.push(sub);
+                });
+            });
+
+            var intersects = raycaster.intersectObjects(objects, true);
+            console.debug(intersects);
+
+            if (intersects.length) {
+                return intersects[0].distance;
+            } else {
+                this.controls.getObject().position.y += 10;
+                return this.toBottom(delta);
+            }
+            /*if (!intersects.length) {
+                this.player.position.y = 100;
+                return;
+            }
+             if (distance < intersects[0].distance) {
+                this.player.position.y -= intersects[0].distance - 1; // the -1 is a fix for a shake effect I had
+            }
+             // TODO: add wather physics
+            if (this.player.position.y < 0) {
+                this.player.position.y = 0;
+            }
+             //gravity and prevent falling through floor
+            if (distance >= intersects[0].distance && velocity.y <= 0) {
+                velocity.y = 0;
+            } else if (distance <= intersects[0].distance && velocity.y === 0) {
+                velocity.y -= delta ;
+            }*/
+        }
+    }]);
+
+    return Controls;
+}();
+
+exports.default = Controls;
+
+},{"./../Camera.js":5,"./../Map/Map.js":7,"./../Scene.js":11,"three":3}],9:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _three = require('three');
+
+var _three2 = _interopRequireDefault(_three);
+
+var _Scene = require('./../Scene.js');
+
+var _Scene2 = _interopRequireDefault(_Scene);
+
+var _Camera = require('./../Camera.js');
+
+var _Camera2 = _interopRequireDefault(_Camera);
+
+var _Map = require('./../Map/Map.js');
+
+var _Map2 = _interopRequireDefault(_Map);
+
+var _Controls = require('./Controls.js');
+
+var _Controls2 = _interopRequireDefault(_Controls);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/**
  * @type {Symbol}
  */
 var singleton = Symbol();
@@ -49173,7 +49492,7 @@ var Player = function () {
     function Player(enforcer) {
         _classCallCheck(this, Player);
 
-        if (enforcer != singletonEnforcer) throw "Cannot construct singleton Camera";
+        if (enforcer != singletonEnforcer) throw "Cannot construct singleton Player";
     }
 
     /**
@@ -49192,17 +49511,15 @@ var Player = function () {
             var geometry = new _three2.default.CubeGeometry(1, 1, 1);
             var material = new _three2.default.MeshNormalMaterial({
                 color: 0xff0000,
-                wireframe: false
+                wireframe: true
             });
 
             this.player = new _three2.default.Mesh(geometry, material);
-            this.player.position.set(0, 5, -120);
+            this.player.position.set(0, 50, 0);
 
             _Scene2.default.scene.add(this.player);
 
-            this.player.add(_Camera2.default.camera);
-            _Camera2.default.camera.position.set(0, 5, 0);
-            _Camera2.default.camera.lookAt(0, 20, 0);
+            this.controls = new _Controls2.default();
         }
 
         /**
@@ -49239,6 +49556,11 @@ var Player = function () {
                 this.player.position.y -= intersects[0].distance - 1; // the -1 is a fix for a shake effect I had
             }
 
+            // TODO: add wather physics
+            if (this.player.position.y < 0) {
+                this.player.position.y = 0;
+            }
+
             //gravity and prevent falling through floor
             if (distance >= intersects[0].distance && velocity.y <= 0) {
                 velocity.y = 0;
@@ -49246,15 +49568,24 @@ var Player = function () {
                 velocity.y -= delta;
             }
         }
+    }, {
+        key: 'update',
+
 
         /**
          * @param {float} delta
          */
-
-    }, {
-        key: 'update',
         value: function update(delta) {
             this.toBottom(delta);
+            this.controls.update(delta, this);
+        }
+    }, {
+        key: 'player',
+        set: function set(player) {
+            this._player = player;
+        },
+        get: function get() {
+            return this._player;
         }
     }], [{
         key: 'instance',
@@ -49272,7 +49603,7 @@ var Player = function () {
 
 exports.default = Player;
 
-},{"./../Camera.js":5,"./../Map/Map.js":7,"./../Scene.js":10,"three":3}],9:[function(require,module,exports){
+},{"./../Camera.js":5,"./../Map/Map.js":7,"./../Scene.js":11,"./Controls.js":8,"three":3}],10:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49387,7 +49718,7 @@ var Renderer = function () {
 
 exports.default = Renderer.instance;
 
-},{"./Camera.js":5,"./Scene.js":10,"three":3}],10:[function(require,module,exports){
+},{"./Camera.js":5,"./Scene.js":11,"three":3}],11:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49469,7 +49800,7 @@ var Scene = function () {
 
 exports.default = Scene.instance;
 
-},{"physijs-browserify":1,"three":3}],11:[function(require,module,exports){
+},{"physijs-browserify":1,"three":3}],12:[function(require,module,exports){
 'use strict';
 
 var _Bootstrap = require('./Bootstrap.js');
@@ -49480,7 +49811,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var bootstrap = new _Bootstrap2.default();
 
-},{"./Bootstrap.js":4}]},{},[11])
+},{"./Bootstrap.js":4}]},{},[12])
 
 
 //# sourceMappingURL=index.js.map
