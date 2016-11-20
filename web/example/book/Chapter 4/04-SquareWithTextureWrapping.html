@@ -1,0 +1,290 @@
+<!doctype html>
+<html>
+
+<head>
+<title>Chapter 4 - Texturing Square and Wraping Modes</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="js/gl-matrix-min.js"></script>
+<script type="text/javascript" src="js/jquery.js"></script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    
+    uniform sampler2D uSampler;
+    varying highp vec2 vTextureCoord;
+    void main(void) {
+        gl_FragColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+
+    uniform mat4 mVMatrix;
+    uniform mat4 pMatrix;
+    attribute vec2 aTextureCoord;
+    varying highp vec2 vTextureCoord;
+    void main(void) {
+        gl_Position = pMatrix * mVMatrix * vec4(aVertexPosition, 1.0);
+        vTextureCoord = aTextureCoord;
+    }
+</script>
+
+
+<script type="text/javascript">
+
+    var gl;
+    var vertexPositionBuffer;
+    var indexBuffer = null; 
+	var verticesTextureBuffer;
+	var indices = [];
+    var shaderProgram;
+    var mvMatrix = mat4.create();
+    var pMatrix = mat4.create();
+    var image;
+var texture;
+   function initTextures() {
+  	texture = gl.createTexture();
+  	image = new Image();
+  	image.onload = function() {
+  	    handleTextureLoaded(image, texture);
+  	};
+  	image.src = "cubetexture.png";
+	}
+
+function handleTextureLoaded(img, texture) {
+
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  gl.clearColor(0.0, 0.0, 0.0, 1.0);
+  			gl.enable(gl.DEPTH_TEST);
+            drawScene();
+}
+    function start() {
+        var canvas = document.getElementById("squareWithDrawArrays");
+            $("#sclamp").change(redrawWithClampingMode);
+            $("#tclamp").change(redrawWithClampingMode);
+
+
+            initGL(canvas);
+            initShaders();
+            initBuffers();
+            initTextures();
+            
+
+        
+    }
+    function redrawWithClampingMode(){
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      var sValue=$("#sclamp option:selected").val();
+      var tValue=$("#tclamp option:selected").val();
+      switch(sValue){
+        case "REPEAT":
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+            break;
+        case "CLAMP_TO_EDGE":
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            break;
+        case "MIRRORED_REPEAT":
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+            break;
+      }
+      switch(tValue){
+        case "REPEAT":
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+            break;
+        case "CLAMP_TO_EDGE":
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            break;
+        case "MIRRORED_REPEAT":
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+            break;
+      }
+      
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      drawScene();
+      
+  
+    }
+    function initGL(canvas) {
+        
+            var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+
+            for (var i = 0; i < names.length; ++i) {
+                try {
+                    gl = canvas.getContext(names[i]);
+                }
+                catch (e) { }
+                if (gl) {
+                    break;
+                }
+            }
+            if (gl == null) {
+                alert("Could not initialise WebGL");
+                return;
+            }
+		
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+        
+        
+    }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+  		gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "pMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "mVMatrix");
+    }
+
+
+   
+   
+
+
+    
+   
+
+    function initBuffers() {
+    
+        vertexPositionBuffer = gl.createBuffer();
+        indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+		
+        vertices = [
+             1.0, 1.0, 0.0, //v0
+            -1.0, 1.0, 0.0, //v1
+             1.0, -1.0, 0.0, //v2
+            -1.0, -1.0, 0.0  //v3
+        ];
+        indices = [0,2,3,0,3,1];
+		
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        vertexPositionBuffer.itemSize = 3;
+        vertexPositionBuffer.numItems = 4;
+        
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+		verticesTextureBuffer = gl.createBuffer();
+ 		gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
+  
+  		var textureCoordinates = [
+    		2.0,  2.0,
+    		-1.0,  2.0,
+    		2.0,  -1.0,
+    		-1.0,  -1.0
+    	];
+    	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordinates),gl.STATIC_DRAW);
+               
+		
+    }
+
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+    }
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        mat4.perspective(pMatrix, 40, gl.viewportWidth / gl.viewportHeight, 0.1, 1000.0);
+        mat4.identity(mvMatrix);
+        mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -7.0]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, vertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
+  		gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+        
+  		// Specify the texture to map onto the faces.
+  
+  		gl.activeTexture(gl.TEXTURE0);
+  		gl.bindTexture(gl.TEXTURE_2D, texture);
+  		gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+        
+        setMatrixUniforms();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+		gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT,0);
+       
+        
+    }
+
+
+
+    
+
+
+</script>
+
+
+</head>
+
+
+<body onload="start();">
+    
+
+    <canvas id="squareWithDrawArrays" style="border: none;" width="500" height="500"></canvas>
+<div>
+<label for="sclamp">Clamping Mode S</label><select id="sclamp" name="sclamp"><option value="REPEAT">REPEAT</option><option value="CLAMP_TO_EDGE">CLAMP_TO_EGDE</option><option value="MIRRORED_REPEAT">MIRRORED_REPEAT</option></select>
+<label for="tclamp">Clamping Mode T</label><select id="tclamp" name="tclamp"><option value="REPEAT">REPEAT</option><option value="CLAMP_TO_EDGE">CLAMP_TO_EGDE</option><option value="MIRRORED_REPEAT">MIRRORED_REPEAT</option></select>
+
+</div>
+    </body>
+
+</html>

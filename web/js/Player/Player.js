@@ -48,6 +48,7 @@ class Player {
 
         this.player = new THREE.Mesh(geometry, material);
         this.player.position.set(0, 50, 0);
+        this.player.name = 'Player';
 
         scene.scene.add(this.player);
 

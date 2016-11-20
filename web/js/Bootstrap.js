@@ -35,12 +35,8 @@ export default class Bootstrap {
     }
 
     /**
-     * initialize game
      */
     initialize() {
-        Physijs.scripts.worker = '/js/physijs_worker.js';
-        Physijs.scripts.ammo = '/js/ammo.js';
-
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
 
@@ -74,6 +70,7 @@ export default class Bootstrap {
         var delta = this.clock.getDelta();
         this.player.update(delta);
         camera.update(this.raycaster, this.mouse);
+        scene.scene.simulate();
 
         //this.cube.position.y -= 0.001;
 

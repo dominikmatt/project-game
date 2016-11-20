@@ -48,26 +48,57 @@ class Map {
         console.debug('create terrain…');
 
         var material = this.getCustomMaterial();
+        var terrainGeometry = new THREE.Geometry();
+        var counter = 0;
 
+        //ground
+        var groundMaterial = new THREE.MeshBasicMaterial({ color: 0x888888, wireframe: true });
+        var ground = new Physijs.ConcaveMesh(
+            new THREE.BoxGeometry( 1000, 1, 1000 ),
+            Physijs.createMaterial(groundMaterial, 0.8, 0.2),
+            0
+        );
+        ground.name = 'Ground';
+
+        //terrain
         this.colladaLoader.load('/example/models/terrain-test-1/RollingHills.dae', (collada) => {
             collada.scene.children.forEach((child) => {
                 child.children.forEach((sub) => {
                     if (sub.name === 'TerrainCell') {
-                        /*var mesh = sub.children[0];
-                        mesh.material = material;*/
-                        console.log(sub.children[0].geometry);
-                        sub.children[0] = new Physijs.HeightfieldMesh(
-                            sub.children[0].geometry,
-                            material,
-                            0
-                        );
+                        var mesh = sub.children[0];
+                        mesh.position.set(sub.position.x, sub.position.y, sub.position.z);
+                        mesh.name = 'TerrainCell-' + counter;
+                        mesh.updateMatrix();
+
+                        terrainGeometry.merge(mesh.geometry, mesh.matrix);
+                        counter++;
                     }
                 });
             });
 
-            this._terrain = collada.scene;
+            //this._terrain = new THREE.Mesh(terrainGeometry, material);
+            //this._terrain = collada.scene;
+            this._terrain = new Physijs.ConcaveMesh(
+                terrainGeometry,
+                material,
+                0
+            );
+            this.terrain.name = 'Terrain';
+            this.terrain.updateMatrix();
+            ground.add(this.terrain);
 
-            scene.scene.add(collada.scene);
+            scene.scene.add(ground);
+            
+            // testobject
+            var boxMaterial = new THREE.MeshBasicMaterial({ color: 0x888888, wireframe: true });
+            var box = new Physijs.BoxMesh(
+                new THREE.CubeGeometry( 5, 5, 5 ),
+                Physijs.createMaterial(boxMaterial, 0.6, 0.5),
+                10
+            );
+            box.name = 'Box-test-object';
+            box.position.set(120, 30, -170);
+            scene.scene.add( box );
         });
 
         this.createOcean();
@@ -82,17 +113,24 @@ class Map {
         var waterMaterial = new THREE.MeshBasicMaterial({
             map: waterTex,
             transparent:true,
+            wireframe: true,
             opacity:0.40
         });
-        var water = new THREE.Mesh(waterGeometry, waterMaterial );
+        //var water = new THREE.Mesh(waterGeometry, waterMaterial );
+        var water = new Physijs.PlaneMesh(
+            waterGeometry,
+            Physijs.createMaterial(waterMaterial, 0.8, 0.2),
+            0
+        );
+        water.name = 'Ocean';
 
         waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping;
         waterTex.repeat.set(2,2);
 
         water.rotation.x = -Math.PI / 2;
-        water.position.y = 1;
+        water.position.y = 0;
 
-        scene.scene.add(water);
+        //scene.scene.add(water);
     }
 
     /**

@@ -23,13 +23,16 @@ class Scene {
     constructor(enforcer) {
         if(enforcer != singletonEnforcer) throw "Cannot construct singleton Scene";
 
+        Physijs.scripts.worker = '/dist/js/physijs_worker.js';
+        Physijs.scripts.ammo = '/dist/js/ammo.js';
+
         /**
          * @type {Physijs.Scene}
          * @private
          */
-        this._scene = new Physijs.Scene({ fixedTimeStep: 1 / 120 });
+        window.scene = this._scene = new Physijs.Scene({ fixedTimeStep: 1 / 120 });
 
-        this.scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
+        this.scene.setGravity(new THREE.Vector3( 0, -10, 0 ));
     }
 
     /**

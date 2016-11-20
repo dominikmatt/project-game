@@ -1121,7 +1121,13 @@ module.exports = function(THREE){
 
 			a = i % this._physijs.xpts;
 			b = Math.round( ( i / this._physijs.xpts ) - ( (i % this._physijs.xpts) / this._physijs.xpts ) );
-			points[i] = geometry.vertices[ a + ( ( this._physijs.ypts - b - 1 ) * this._physijs.ypts ) ].z;
+			//points[i] = geometry.vertices[ a + ( ( this._physijs.ypts - b - 1 ) * this._physijs.ypts ) ].z;
+
+			var vertice = geometry.vertices[ a + ( ( this._physijs.ypts - b - 1 ) * this._physijs.ypts ) ];
+
+			if (vertice) {
+				points[i] = vertice.z;
+			}
 
 			//points[i] = geometry.vertices[i];
 		}
@@ -48746,16 +48752,12 @@ var Bootstrap = function () {
     }
 
     /**
-     * initialize game
      */
 
 
     _createClass(Bootstrap, [{
         key: 'initialize',
         value: function initialize() {
-            Physijs.scripts.worker = '/js/physijs_worker.js';
-            Physijs.scripts.ammo = '/js/ammo.js';
-
             this.raycaster = new _three2.default.Raycaster();
             this.mouse = new _three2.default.Vector2();
 
@@ -48794,6 +48796,7 @@ var Bootstrap = function () {
             var delta = this.clock.getDelta();
             this.player.update(delta);
             _Camera2.default.update(this.raycaster, this.mouse);
+            _Scene2.default.scene.simulate();
 
             //this.cube.position.y -= 0.001;
 
@@ -49006,22 +49009,45 @@ var Map = function () {
             console.debug('create terrain…');
 
             var material = this.getCustomMaterial();
+            var terrainGeometry = new _three2.default.Geometry();
+            var counter = 0;
 
+            //ground
+            var groundMaterial = new _three2.default.MeshBasicMaterial({ color: 0x888888, wireframe: true });
+            var ground = new Physijs.ConcaveMesh(new _three2.default.BoxGeometry(1000, 1, 1000), Physijs.createMaterial(groundMaterial, 0.8, 0.2), 0);
+            ground.name = 'Ground';
+
+            //terrain
             this.colladaLoader.load('/example/models/terrain-test-1/RollingHills.dae', function (collada) {
                 collada.scene.children.forEach(function (child) {
                     child.children.forEach(function (sub) {
                         if (sub.name === 'TerrainCell') {
-                            /*var mesh = sub.children[0];
-                            mesh.material = material;*/
-                            console.log(sub.children[0].geometry);
-                            sub.children[0] = new Physijs.HeightfieldMesh(sub.children[0].geometry, material, 0);
+                            var mesh = sub.children[0];
+                            mesh.position.set(sub.position.x, sub.position.y, sub.position.z);
+                            mesh.name = 'TerrainCell-' + counter;
+                            mesh.updateMatrix();
+
+                            terrainGeometry.merge(mesh.geometry, mesh.matrix);
+                            counter++;
                         }
                     });
                 });
 
-                _this._terrain = collada.scene;
+                //this._terrain = new THREE.Mesh(terrainGeometry, material);
+                //this._terrain = collada.scene;
+                _this._terrain = new Physijs.ConcaveMesh(terrainGeometry, material, 0);
+                _this.terrain.name = 'Terrain';
+                _this.terrain.updateMatrix();
+                ground.add(_this.terrain);
 
-                _Scene2.default.scene.add(collada.scene);
+                _Scene2.default.scene.add(ground);
+
+                // testobject
+                var boxMaterial = new _three2.default.MeshBasicMaterial({ color: 0x888888, wireframe: true });
+                var box = new Physijs.BoxMesh(new _three2.default.CubeGeometry(5, 5, 5), Physijs.createMaterial(boxMaterial, 0.6, 0.5), 10);
+                box.name = 'Box-test-object';
+                box.position.set(120, 30, -170);
+                _Scene2.default.scene.add(box);
             });
 
             this.createOcean();
@@ -49039,17 +49065,20 @@ var Map = function () {
             var waterMaterial = new _three2.default.MeshBasicMaterial({
                 map: waterTex,
                 transparent: true,
+                wireframe: true,
                 opacity: 0.40
             });
-            var water = new _three2.default.Mesh(waterGeometry, waterMaterial);
+            //var water = new THREE.Mesh(waterGeometry, waterMaterial );
+            var water = new Physijs.PlaneMesh(waterGeometry, Physijs.createMaterial(waterMaterial, 0.8, 0.2), 0);
+            water.name = 'Ocean';
 
             waterTex.wrapS = waterTex.wrapT = _three2.default.RepeatWrapping;
             waterTex.repeat.set(2, 2);
 
             water.rotation.x = -Math.PI / 2;
-            water.position.y = 1;
+            water.position.y = 0;
 
-            _Scene2.default.scene.add(water);
+            //scene.scene.add(water);
         }
 
         /**
@@ -49352,6 +49381,7 @@ var Controls = function () {
     }, {
         key: 'update',
         value: function update(delta, player) {
+            var lastPosition = this.velocity;
             this.velocity.x -= this.velocity.x * 10.0 * delta;
             this.velocity.z -= this.velocity.z * 10.0 * delta;
             this.velocity.y -= 9.8 * 100.0 * delta;
@@ -49367,7 +49397,14 @@ var Controls = function () {
 
             if (this.move.forward) {
                 var distance = this.toBottom(delta);
-                console.debug('distance:', distance);
+
+                if (distance == false) {
+                    console.debug('reset');
+                    this.controls.getObject().translateX(lastPosition.x * delta);
+                    this.controls.getObject().translateZ(lastPosition.z * delta);
+                    return;
+                }
+
                 this.controls.getObject().position.y -= distance;
 
                 if (this.controls.getObject().position.y <= 1) {
@@ -49395,44 +49432,32 @@ var Controls = function () {
                 return;
             }
 
+            var slopeLimit = 0.03;
+            var slopeAngle = false;
             var raycaster = new _three2.default.Raycaster();
-            var velocity = new _three2.default.Vector3();
-            var distance = 0;
-            var objects = [];
 
             raycaster.set(this.controls.getObject().position, new _three2.default.Vector3(0, -1, 0));
-            _Map2.default.terrain.children.forEach(function (child) {
-                child.children.forEach(function (sub) {
-                    objects.push(sub);
-                });
-            });
 
-            var intersects = raycaster.intersectObjects(objects, true);
-            console.debug(intersects);
+            var intersects = raycaster.intersectObject(_Map2.default.terrain, true);
 
-            if (intersects.length) {
-                return intersects[0].distance;
-            } else {
+            if (!intersects.length) {
                 this.controls.getObject().position.y += 10;
                 return this.toBottom(delta);
             }
-            /*if (!intersects.length) {
-                this.player.position.y = 100;
-                return;
+
+            if (this.lastPosition) {
+                //slopeAngle = this.lastPosition.angleTo(intersects[0].point);
             }
-             if (distance < intersects[0].distance) {
-                this.player.position.y -= intersects[0].distance - 1; // the -1 is a fix for a shake effect I had
+
+            var slope = this.lastPosition - intersects[0].point.y;
+            this.lastPosition = intersects[0].point.y;
+
+            if (slope < -0.25 || slope > 0.25) {
+                console.info('stop');
+                return false;
             }
-             // TODO: add wather physics
-            if (this.player.position.y < 0) {
-                this.player.position.y = 0;
-            }
-             //gravity and prevent falling through floor
-            if (distance >= intersects[0].distance && velocity.y <= 0) {
-                velocity.y = 0;
-            } else if (distance <= intersects[0].distance && velocity.y === 0) {
-                velocity.y -= delta ;
-            }*/
+
+            return intersects[0].distance;
         }
     }]);
 
@@ -49516,6 +49541,7 @@ var Player = function () {
 
             this.player = new _three2.default.Mesh(geometry, material);
             this.player.position.set(0, 50, 0);
+            this.player.name = 'Player';
 
             _Scene2.default.scene.add(this.player);
 
@@ -49760,13 +49786,16 @@ var Scene = function () {
 
     if (enforcer != singletonEnforcer) throw "Cannot construct singleton Scene";
 
+    Physijs.scripts.worker = '/dist/js/physijs_worker.js';
+    Physijs.scripts.ammo = '/dist/js/ammo.js';
+
     /**
      * @type {Physijs.Scene}
      * @private
      */
-    this._scene = new Physijs.Scene({ fixedTimeStep: 1 / 120 });
+    window.scene = this._scene = new Physijs.Scene({ fixedTimeStep: 1 / 120 });
 
-    this.scene.setGravity(new _three2.default.Vector3(0, -30, 0));
+    this.scene.setGravity(new _three2.default.Vector3(0, -10, 0));
   }
 
   /**

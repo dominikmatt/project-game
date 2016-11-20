@@ -1,0 +1,740 @@
+<html>
+
+<head>
+<title>Chapter 7 - Terrain Physics</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="js/gl-matrix-min.js"></script>
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="js/webgl-utils.js"></script>
+
+<script type="text/javascript" src="primitive/Face.js"></script>
+<script type="text/javascript" src="primitive/Geometry.js"></script>
+<script type="text/javascript" src="primitive/parseJSON.js"></script>
+<script type="text/javascript" src="primitive/utils.js"></script>
+<script type="text/javascript" src="primitive/StageObject.js"></script>
+<script type="text/javascript" src="primitive/BSplineIterpolation.js"></script>
+<script type="text/javascript" src="primitive/game/RightHand.js"></script>
+<script type="text/javascript" src="primitive/game/LeftHand.js"></script>
+<script type="text/javascript" src="primitive/game/Bullet.js"></script>
+<script type="text/javascript" src="primitive/game/Explosion.js"></script>
+<script type="text/javascript" src="primitive/game/TerrainData.js"></script>
+<script type="text/javascript" src="primitive/PlaneGeometry.js"></script>
+<script type="text/javascript" src="primitive/game/Plane.js"></script>
+
+<script type="text/javascript" src="primitive/Stage.js"></script>
+
+<script type="text/javascript" src="primitive/camera.js"></script>
+<script type="text/javascript" src="primitive/freecamera.js"></script>
+<script type="text/javascript" src="primitive/orbitcamera.js"></script>
+<script type="text/javascript" src="primitive/MouseInteractor.js"></script>
+<script type="text/javascript" src="primitive/KeyBoardInteractor.js"></script>
+<script type="text/javascript" src="./js/jiglib.js"></script>
+<script type="text/javascript" src="primitive/game/Grenade.js"></script>
+
+
+<!--<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    void main(void) {
+        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+
+    uniform mat4 mVMatrix;
+    uniform mat4 pMatrix;
+
+    void main(void) {
+        gl_Position = pMatrix * mVMatrix * vec4(aVertexPosition, 1.0);
+    }
+</script>-->
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+    varying vec3 transformedNormal;
+    varying vec3 vertexPos;
+
+    uniform vec3 uAmbientColor;
+    uniform vec3 uLightingPosition;
+    uniform vec3 uDirectionalColor;
+    uniform vec3 uSpecularColor;
+
+    uniform vec3 materialDiffuseColor;
+    uniform vec3 materialAmbientColor;
+    uniform vec3 materialSpecularColor;
+    uniform sampler2D uSampler;
+    varying highp vec2 vTextureCoord;
+    uniform bool hasTexture;
+
+    void main(void)  {
+    vec3 normal=normalize(transformedNormal);
+    vec3 eyeVector=normalize(-vertexPos);
+    vec3 lightDirection = normalize(uLightingPosition);
+    float specular = 0.0;
+
+    float directionalLightWeighting = max(dot(normal, -lightDirection), 0.0);
+    if(directionalLightWeighting>0.0)
+    {
+    vec3 halfDir = normalize(-lightDirection + eyeVector);
+    float specAngle = max(dot(halfDir, normal), 0.0);
+    specular = pow(specAngle, 4.0);
+    }
+    if(hasTexture){
+    vec3 iColor = uAmbientColor+ uDirectionalColor* directionalLightWeighting+uSpecularColor*materialSpecularColor*specular;
+    vec4 tColor=texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+    if(tColor.x==1.0){
+    gl_FragColor = vec4(iColor, 1.0)*texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+
+    }
+    else{
+    gl_FragColor = vec4(iColor, 1.0)*texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+    }
+    }
+    else{
+    vec3 iColor = uAmbientColor*materialAmbientColor+ uDirectionalColor *materialDiffuseColor * directionalLightWeighting+uSpecularColor*materialSpecularColor*specular;
+
+    gl_FragColor = vec4(iColor, 1.0);
+    }
+    }
+</script>
+
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexNormal;
+    uniform mat4 mVMatrix;
+    uniform mat4 pMatrix;
+    uniform mat4 nMatrix;
+    varying vec3 transformedNormal;
+    varying vec3 vertexPos;
+    attribute vec2 aTextureCoord;
+    varying highp vec2 vTextureCoord;
+    uniform bool hasTexture;
+    void main(void) {
+    vec4 vertexPos4 =  mVMatrix * vec4(aVertexPosition, 1.0);
+    vertexPos = vertexPos4.xyz;
+    transformedNormal = vec3(nMatrix * vec4(aVertexNormal,1.0));
+    gl_Position= pMatrix *vertexPos4;
+     if(hasTexture){
+      vTextureCoord = aTextureCoord;
+     }
+    }
+
+
+</script>
+
+
+<script type="text/javascript">
+
+    var gl;
+    var shaderProgram;
+    var mvMatrix = mat4.create();
+    var pMatrix = mat4.create();
+    var stage;
+    var textureCount=-1;
+
+    var matrixStack = [];
+    var mouseInteractor=null;
+    var keyboardInteractor=null;
+    var textureList=[];
+    var cam;
+    var bullets=[];
+    var nextBulletIndex=0;
+    var leftHand=null;
+    var grenade=null;
+    var grenadeControlPoints=[[-1.5,-2,-10],[-1.5,10,-30],[-1.5,15,-40],[-1.5,10,-60],[-1.5,0,-80]];
+    var grenadePositions=[];
+    var explosion=null;
+    var system;
+    var rate=300; //Animation should fire after every 300
+    var MINIMUM_FRAME_RATE=30;
+    var lastFrameTime = undefined;
+    var cyclesLeftOver;
+    var currentTime;
+    var elapsedTime;
+    var clampToEdge=true;
+    function pushMatrix() {
+        var copy = mat4.create();
+        mat4.copy(copy,mvMatrix);
+        matrixStack.push(copy);
+    }
+
+    function popMatrix() {
+        if (matrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = matrixStack.pop();
+    }
+    function init_jiglib() {
+
+        system = jigLib.PhysicsSystem.getInstance();
+        system.setCollisionSystem(); // CollisionSystemBrute
+        // system.setCollisionSystem(true); // CollisionSystemGrid
+         system.setSolverType("FAST");
+        // system.setSolverType("NORMAL");
+        //system.setSolverType("ACCUMULATED");
+        system.setGravity( jigLib.Vector3DUtil.create( 0, -9.8, 0, 0 ) );
+
+        //var ground = new JigLib.JPlane();
+        //ground.set_y(-10);
+        //ground.set_rotationX(90);
+        //ground.set_movable(false);
+        //system.addBody( ground );
+
+    }
+    function start() {
+        var canvas = document.getElementById("squareWithDrawArrays");
+        lastFrameTime=(new Date).getTime();
+
+        init_jiglib();
+            initGL(canvas);
+
+            initShaders();
+        document.onkeydown = function(event) {
+
+            handleKeys(event);
+        }
+        stage=new Stage(gl);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        cam=new FreeCamera();
+        cam.setPosition(new Array(0.0, 25.0, 150.0));
+        cam.setLookAtPoint(vec3.fromValues(0.0, 0.0, 1.0));
+        mouseInteractor=new MouseInteractor(cam,canvas);
+        keyboardInteractor=new KeyBoardInteractor(cam,document);
+        keyboardInteractor.callback=handleKeys;
+        var splineInterpolation=new BSplineInterpolation(grenadeControlPoints);
+        grenadePositions=splineInterpolation.position;
+        initScene();
+        var plane=new Plane(7500,7500,127,127,"terrain_1024.jpg",null);
+        loadTexture(plane,clampToEdge);
+        plane.system=system;
+
+        plane.initializeRigidBody();
+        plane.rigidBody.set_movable(false);
+        system.addBody(plane.rigidBody);
+        addStageObject(plane,[0.0,0.0,0.0],degToRadian(-90),0.0,0.0);
+        //loadStageObject("model/obj/terrain.json",[0.0,0.0,0.0],0.00,0.0,0.0);
+        loadStageObject("model/obj/building.json",[55.0,0.0,170],0.0,0.0,0.0);
+        loadStageObject("model/obj/giantPillar.json",[-60.0,0.0,-200],0.0,0.0,0.0);
+        loadStageObject("model/obj/pillarBroken.json",[10.0,0.0,-200.00],0.0,0.0,0.0);
+        loadStageObject("model/obj/streetlamp.json",[20.0,0.0,200.00],0.0,0.0,0.0);
+        loadStageObject("model/obj/cityLine.json",[12.0,0.0,-335.0],0,3.14,0.0);
+        loadStageObject("model/obj/railing.json",[0.0,5.0,200.0],0.0,0.0,0.0);
+        loadStageObject("model/obj/dump.json",[-40.0,0.0,-30.0],0.0,0.0,0.0);
+        loadStageObject("model/weapons/rightHand.json",[0.0,0.0,0.0],0.0,degToRadian(2),0.0);
+        loadStageObject("model/weapons/bullet.json",[0.0,40.0,-10.0],0.0,0.0,0.0);
+        loadStageObject("model/weapons/leftHand.json",[0.0,20.0,-150.0],0.0,0.0,0.0);
+        loadStageObject("model/weapons/grenade.json",[0.0,0.0,0.0],0.0,0.0,0.0);
+        loadStageObject("model/weapons/explosion.json",[0.0,0.0,0.0],0.0,0.0,0.0);
+
+
+
+
+    }
+    function handleKeys(event) {
+
+        switch(event.keyCode) {//determine the key pressed
+              case 13:
+              leftHand.visible=true;
+              break;
+              case 32://s key
+                        bullets[nextBulletIndex].initialize();
+                    nextBulletIndex=nextBulletIndex+1;
+                        if(nextBulletIndex>=bullets.length){
+                            nextBulletIndex=0;
+                        }
+               break;
+            }
+        }
+
+    function loadStageObject(url,location,rotationX,rotationY,rotationZ){
+        $.getJSON(url,function(data){
+            var nameOfObject=data.metadata.sourceFile.split(".")[0];
+            var stageObject=null;
+            if(nameOfObject=="rightHand"){
+                stageObject=new RightHand();
+            }else if(nameOfObject=="leftHand"){
+                stageObject=new LeftHand();
+                leftHand=stageObject;
+                leftHand.grenadeCallback=initializeGrenade;
+            }else if(nameOfObject=="bullet"){
+                stageObject=new Bullet();
+
+
+            }
+            else if(nameOfObject=="grenade"){
+                stageObject=new Grenade();
+                grenade=stageObject;
+                grenade.system=system;
+                grenade.callBack=initializeExplosion;
+
+            }
+            else if(nameOfObject=="explosion"){
+                stageObject=new Explosion();
+                explosion=stageObject;
+                initExplosionTextures(1);
+            }
+            else{
+                stageObject=new StageObject();
+            }
+            stageObject.camera=cam;
+
+            stageObject.loadObject(data);
+            loadTexture(stageObject,false);
+            addStageObject(stageObject,location,rotationX,rotationY,rotationZ);
+
+
+
+        });
+
+    }
+    function loadTexture(stageObject,bool){
+        if(stageObject.materialFile!=null){
+            if((textureList[stageObject.materialFile.trim()]===undefined)){
+                var currentDate=new Date();
+                var textureIndex=currentDate.getMilliseconds();
+                stageObject.textureIndex=textureIndex;
+                textureList[stageObject.materialFile.trim()]=textureIndex;
+
+                initTextures(stageObject.materialFile.trim(),textureIndex,bool);
+
+            }
+            else{
+                stageObject.textureIndex=textureList[stageObject.materialFile.trim()]
+
+            }
+
+        }
+    }
+    function initTextures(fileName,textureCount,clampToEdge){
+        var image = new Image();
+        image.onload = function() { stage.addTexture(textureCount,fileName,image,clampToEdge); }
+        image.src = "model/obj/"+fileName;
+
+    }
+    function initExplosionTextures(countImage){
+        explosion.textureIndices.push(explosion.textureIndex);
+        var fileName="blast_"+countImage+".png";
+            var currentDate=new Date();
+            var textureIndex=currentDate.getMilliseconds()+countImage*20000;
+            explosion.textureIndices.push(textureIndex);
+            textureList[fileName]=textureIndex;
+        var image = new Image();
+        image.onload = function() {
+          stage.addTexture(textureIndex,fileName,image);
+         if(countImage<15){
+        countImage=countImage+1;
+        initExplosionTextures(countImage) 
+       } 
+    }
+         image.src = "model/textures/"+fileName;
+        
+    }
+
+
+    function addStageObject(stageObject,location,rotationX,rotationY,rotationZ){
+
+        cloneObjects(stageObject);
+        stageObject.location=location;
+        stageObject.rotationX=rotationX;
+        stageObject.rotationY=rotationY;
+        stageObject.rotationZ=rotationZ;
+        stage.addModel(stageObject);
+    }
+    function cloneObjects(stageObject){
+
+        if(stageObject.name=="building"){
+           // alert(stageObject.name);
+
+            var building1=stageObject.clone();
+            var building2=stageObject.clone();
+            var building3=stageObject.clone();
+            building1.location=[-85.0,0.0,170.0];
+            building2.location=[-85.0,0.0,-110.0];
+            building3.location=[55.0,0.0,-110.0];
+
+            stage.addModel(building1);
+            stage.addModel(building2);
+            stage.addModel(building3);
+
+
+        }
+        if(stageObject.name=="streetLamp"){
+            //alert(stageObject.name);
+
+            var streetlamp1=stageObject.clone();
+            var streetlamp2=stageObject.clone();
+            var streetlamp3=stageObject.clone();
+            var streetlamp4=stageObject.clone();
+            var streetlamp5=stageObject.clone();
+
+            streetlamp1.location=[20.0,0.0,70.0];
+            streetlamp1.rotationX=degToRadian(-90);
+            streetlamp2.location=[20.0,0.0,-100.0];
+            streetlamp3.location=[-50.0,0.0,180.0]
+            streetlamp3.rotationZ=degToRadian(-65);
+            streetlamp4.location=[-50.0,0.0,0.0];
+            streetlamp5.location=[-50.0,0.0,-100.0];
+
+            stage.addModel(streetlamp1);
+            stage.addModel(streetlamp2);
+            stage.addModel(streetlamp3);
+            stage.addModel(streetlamp4);
+            stage.addModel(streetlamp5);
+
+
+        }
+        if(stageObject.name=="railing"){
+            //alert(stageObject.name);
+
+            var railing1=stageObject.clone();
+            var railing2=stageObject.clone();
+
+            railing1.location=[40.0,2.0,0.0];
+            railing1.rotationY=degToRadian(-120);
+            railing2.location=[-30.0,5.0,-100.0];
+
+            railing2.rotationY=degToRadian(-65);
+
+
+            stage.addModel(railing1);
+            stage.addModel(railing2);
+
+
+        }
+        if(stageObject.name=="dump"){
+            var dump1=stageObject.clone();
+            dump1.location=[-30.0,0.0,200.0];
+            stage.addModel(dump1);
+        }
+        if(stageObject.name=="bullet"){
+            var sphere = new jigLib.JBox( null, 10,10,10 );
+            sphere.set_movable(true);
+            sphere.set_mass(27);
+            stageObject.rigidBody = sphere;
+            stageObject.system=system;
+
+            bullets.push(stageObject);
+
+            for(var j=0;j<24;++j){
+            var bullet=stageObject.clone();
+                bullet.camera=cam;
+                bullets.push(bullet);
+                var sphere = new jigLib.JBox( null,10,10,10);
+                sphere.set_mass(27);
+                bullet.rigidBody = sphere;
+
+                sphere.set_movable(true);
+                bullet.system=system;
+
+                stage.addModel(bullet);
+            }
+        }
+    }
+    function initializeGrenade(){
+        grenade.camera=cam;
+        grenade.initialize(grenadePositions);
+    }
+    function initializeExplosion(rigidBody,collisions){
+
+        var pos = rigidBody.get_currentState().position;
+        //var dir = rigidBody.get_currentState().get_orientation().glmatrix;
+        var modelMatrix=mat4.create();
+        mat4.identity(modelMatrix);
+        var location=vec3.fromValues(pos[0], pos[1], pos[2]);
+       // mat4.multiply(modelMatrix,modelMatrix,dir);
+        mat4.translate(modelMatrix,modelMatrix, location);
+
+        explosion.initialize(modelMatrix);
+
+    }
+    function initScene(){
+
+            gl.clearColor(1.0, 1.0, 1.0, 1.0);
+            gl.enable(gl.DEPTH_TEST);
+            mat4.identity(mvMatrix);
+            //mat4.translate(mvMatrix,mvMatrix, [25.0,-25.0,-290]);
+            tick();
+    
+    }
+    function tick(){
+        requestAnimFrame(tick);
+
+        animate();
+
+    }
+    function animate(){
+        currentTime = (new Date).getTime();
+        elapsedTime = currentTime - lastFrameTime;
+        if (elapsedTime < rate) return;
+
+
+        var updateIterations = Math.floor(elapsedTime / MINIMUM_FRAME_RATE);
+        system.integrate( elapsedTime / 1000 );
+        while(updateIterations > 0){
+
+            drawScene();
+
+            updateIterations -= 1;
+        }
+        lastFrameTime = (new Date).getTime();
+
+
+    }
+    
+    function initGL(canvas) {
+        
+            var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+
+            for (var i = 0; i < names.length; ++i) {
+                try {
+                    gl = canvas.getContext(names[i]);
+                }
+                catch (e) { }
+                if (gl) {
+                    break;
+                }
+            }
+            if (gl == null) {
+                alert("Could not initialise WebGL");
+                return null;
+            }
+		
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+
+        
+    }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
+        gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
+
+
+
+
+        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "pMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "mVMatrix");
+        shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "nMatrix");
+        shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor");
+        shaderProgram.specularColorUniform = gl.getUniformLocation(shaderProgram, "uSpecularColor");
+        shaderProgram.lightingDirectionUniform = gl.getUniformLocation(shaderProgram, "uLightingPosition");
+        shaderProgram.directionalColorUniform = gl.getUniformLocation(shaderProgram, "uDirectionalColor");
+        shaderProgram.materialDiffuseColor = gl.getUniformLocation(shaderProgram, "materialDiffuseColor");
+        shaderProgram.materialAmbientColor = gl.getUniformLocation(shaderProgram, "materialAmbientColor");
+        shaderProgram.materialSpecularColor = gl.getUniformLocation(shaderProgram, "materialSpecularColor");
+        shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+        gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
+        shaderProgram.hasTexture = gl.getUniformLocation(shaderProgram, "hasTexture");
+
+
+
+    }
+
+
+   
+   
+
+
+    
+   
+
+    function calculateMvMatrix(){
+
+        cam.apply(gl.viewportWidth / gl.viewportHeight);
+        mat4.multiply(mvMatrix,mvMatrix,cam.viewMatrix);
+
+    }
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, cam.projMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+        var invertMatrix = mat4.create();
+        mat4.invert(invertMatrix, mvMatrix);
+        var normalMatrix=mat4.create();
+        mat4.transpose(normalMatrix, invertMatrix)
+
+        gl.uniformMatrix4fv(shaderProgram.nMatrixUniform, false, normalMatrix);
+    }
+    function setLightUniform(){
+        gl.uniform3f(shaderProgram.ambientColorUniform,0.1,0.1,0.1);
+        gl.uniform3f(shaderProgram.specularColorUniform,1.0,1.0,1.0);
+        var lightingDirection = [0,-1.25,-1.25];
+        gl.uniform3fv(shaderProgram.lightingDirectionUniform, lightingDirection);
+        gl.uniform3f(shaderProgram.directionalColorUniform,0.5,0.5,0.5);
+    }
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+
+
+
+
+        setLightUniform();
+        pushMatrix();
+        calculateMvMatrix();
+        for(var i=0;i<stage.stageObjects.length;++i){
+         if(stage.stageObjects[i].visible==true){
+
+        pushMatrix();
+
+
+            stage.stageObjects[i].update();
+            mat4.multiply(mvMatrix,mvMatrix,stage.stageObjects[i].modelMatrix);
+
+
+        setMatrixUniforms();
+        gl.bindBuffer(gl.ARRAY_BUFFER, stage.stageObjects[i].vbo);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, stage.stageObjects[i].vbo.itemSize, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER,stage.stageObjects[i].nbo);
+        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, stage.stageObjects[i].nbo.itemSize, gl.FLOAT, false, 0, 0);
+        gl.uniform3f(shaderProgram.materialDiffuseColor,stage.stageObjects[i].diffuseColor[0],stage.stageObjects[i].diffuseColor[1],stage.stageObjects[i].diffuseColor[2]);
+        gl.uniform3f(shaderProgram.materialAmbientColor,stage.stageObjects[i].ambientColor[0],stage.stageObjects[i].ambientColor[1],stage.stageObjects[i].ambientColor[2]);
+        gl.uniform3f(shaderProgram.materialSpecularColor,stage.stageObjects[i].specularColor[0],stage.stageObjects[i].specularColor[1],stage.stageObjects[i].specularColor[2]);
+        if(stage.stageObjects[i].materialFile!=null){
+            gl.uniform1i(shaderProgram.hasTexture,1);
+            try{
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, stage.textures[stage.stageObjects[i].textureIndex].texture);
+            gl.uniform1i(gl.getUniformLocation(shaderProgram, "uSampler"), 0);
+            gl.bindBuffer(gl.ARRAY_BUFFER, stage.stageObjects[i].verticesTextureBuffer);
+            gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, 2, gl.FLOAT, false, 0, 0);
+            }
+            catch(e){
+            }
+        }
+        else{
+            gl.uniform1i(shaderProgram.hasTexture,0);
+
+        }
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stage.stageObjects[i].ibo);
+
+            gl.drawElements(gl.TRIANGLES, stage.stageObjects[i].geometry.indices.length, gl.UNSIGNED_SHORT,0);
+        popMatrix();
+
+         }
+        }
+        popMatrix();
+
+    }
+
+
+
+
+
+
+
+</script>
+
+
+</head>
+
+
+<body onload="start();" style="border: none;background-color:transparent;">
+
+
+
+<canvas id="squareWithDrawArrays" style="border: none;background-color:transparent;" width="900px" height="650px"></canvas>
+<table border="1px" style="float:right">
+    <tr>
+        <td>        up arrow
+        </td><td>            move  the camera closer.
+    </td>
+    </tr>
+    <tr>
+        <td>        down arrow
+        </td><td>            move  the camera farther.
+    </td>
+    </tr>
+    <tr>
+        <td>        Shift+a key
+        </td><td>            tilt to the left
+    </td>
+    </tr>
+    <tr>
+        <td>        Shift +left arrow
+        </td><td>            Rotate to left
+    </td>
+    </tr>
+    <tr>
+        <td>        shift+d key
+        </td><td>            tilt to the right
+    </td>
+    </tr>
+    <tr>
+        <td>        shift+right arrow
+        </td><td>            rotate to the right
+    </td>
+    </tr>
+    <tr>
+        <td>        shift+up arrow
+        </td><td>            look down
+    </td>
+    </tr>
+    <tr>
+        <td>        shift+down arrow
+        </td><td>            look up
+    </td>
+    <tr><td colspan="2">Click left mouse button and drag to move the camera</td></tr>
+    <tr><td colspan="2">Hold Shift key + Click left mouse button and drag to rotate the camera</td></tr>
+
+</table>
+
+ </body>
+
+</html>

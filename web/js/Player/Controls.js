@@ -177,6 +177,7 @@ export default class Controls {
      * @param {Player} player
      */
     update(delta, player) {
+        var lastPosition = this.velocity;
         this.velocity.x -= this.velocity.x * 10.0 * delta;
         this.velocity.z -= this.velocity.z * 10.0 * delta;
         this.velocity.y -= 9.8 * 100.0 * delta;
@@ -192,7 +193,14 @@ export default class Controls {
 
         if (this.move.forward) {
             var distance = this.toBottom(delta);
-            console.debug('distance:', distance);
+
+            if (distance == false) {
+                console.debug('reset');
+                this.controls.getObject().translateX(lastPosition.x * delta);
+                this.controls.getObject().translateZ(lastPosition.z * delta);
+                return;
+            }
+
             this.controls.getObject().position.y -= distance;
 
             if (this.controls.getObject().position.y <= 1) {
@@ -218,47 +226,32 @@ export default class Controls {
             return;
         }
 
-        var raycaster = new THREE.Raycaster();
-        var velocity = new THREE.Vector3();
-        var distance = 0;
-        var objects = [];
+        let slopeLimit = 0.03;
+        let slopeAngle = false;
+        let raycaster = new THREE.Raycaster();
 
         raycaster.set(this.controls.getObject().position, new THREE.Vector3(0, -1, 0));
-        map.terrain.children.forEach(function(child) {
-            child.children.forEach(function(sub) {
-                objects.push(sub);
-            });
-        });
 
-        var intersects = raycaster.intersectObjects( objects, true );
-        console.debug(intersects);
+        let intersects = raycaster.intersectObject(map.terrain, true);
 
-        if (intersects.length) {
-            return intersects[0].distance;
-        } else {
+        if (!intersects.length) {
             this.controls.getObject().position.y += 10;
             return this.toBottom(delta);
         }
-        /*if (!intersects.length) {
-            this.player.position.y = 100;
-            return;
+
+        if (this.lastPosition) {
+            //slopeAngle = this.lastPosition.angleTo(intersects[0].point);
         }
 
-        if (distance < intersects[0].distance) {
-            this.player.position.y -= intersects[0].distance - 1; // the -1 is a fix for a shake effect I had
+        let slope = this.lastPosition - intersects[0].point.y;
+        this.lastPosition = intersects[0].point.y;
+
+
+        if (slope < -0.25 || slope > 0.25) {
+            console.info('stop');
+            return false;
         }
 
-        // TODO: add wather physics
-        if (this.player.position.y < 0) {
-            this.player.position.y = 0;
-        }
-
-        //gravity and prevent falling through floor
-        if (distance >= intersects[0].distance && velocity.y <= 0) {
-            velocity.y = 0;
-        } else if (distance <= intersects[0].distance && velocity.y === 0) {
-            velocity.y -= delta ;
-        }*/
-
+        return intersects[0].distance;
     }
 }

@@ -1,0 +1,505 @@
+<!doctype html>
+<html>
+
+<head>
+<title>Chapter 3 - Loading Scene With Lamps Arrays</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<script type="text/javascript" src="js/gl-matrix-min.js"></script>
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="js/webgl-utils.js"></script>
+
+<script type="text/javascript" src="primitive/Face.js"></script>
+<script type="text/javascript" src="primitive/Geometry.js"></script>
+<script type="text/javascript" src="primitive/parseJSON.js"></script>
+
+<script type="text/javascript" src="primitive/StageObject.js"></script>
+<script type="text/javascript" src="primitive/Stage.js"></script>
+<script type="text/javascript" src="primitive/Light.js"></script>
+<script type="text/javascript" src="primitive/Lights.js"></script>
+
+<!--<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    void main(void) {
+        gl_FragColor = vec4(0.5, 0.5, 0.5, 1.0);
+    }
+</script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+
+    uniform mat4 mVMatrix;
+    uniform mat4 pMatrix;
+
+    void main(void) {
+        gl_Position = pMatrix * mVMatrix * vec4(aVertexPosition, 1.0);
+    }
+</script>-->
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+    varying vec3 transformedNormal;
+    varying vec3 vertexPos;
+    const int NUM_DIRECTIONAL_LIGHTS = 1;
+
+    uniform vec3 uLightDirection[NUM_DIRECTIONAL_LIGHTS];
+
+    const int NUM_POSITIONAL_LIGHTS = 2;
+
+    varying vec3 uLightRay[NUM_POSITIONAL_LIGHTS];
+    uniform vec3 uAmbientColor;
+    uniform vec3 uDirectionalDiffuseColor[NUM_DIRECTIONAL_LIGHTS];
+    uniform vec3 uDirectionalSpecularColor[NUM_DIRECTIONAL_LIGHTS];
+    uniform vec3 uPositionalDiffuseColor[NUM_POSITIONAL_LIGHTS];
+    uniform vec3 uPositionalSpecularColor[NUM_POSITIONAL_LIGHTS];
+
+
+    uniform vec3 materialDiffuseColor;
+    uniform vec3 materialAmbientColor;
+    uniform vec3 materialSpecularColor;
+
+    void main(void)  {
+    vec3 normal=normalize(transformedNormal);
+    vec3 eyeVector=normalize(-vertexPos);
+    vec3 iAmbient=uAmbientColor*materialAmbientColor;
+    vec3 iDiffuse=vec3(0.0,0.0,0.0);
+    vec3 iSpecular=vec3(0.0,0.0,0.0);
+
+    float specular = 0.0;
+
+    for(int i = 0; i < NUM_DIRECTIONAL_LIGHTS ; i++){
+    vec3 lightDirection = normalize(uLightDirection[i]);
+    float directionalLightWeighting = max(dot(normal, -lightDirection), 0.0);
+    iDiffuse+=uDirectionalDiffuseColor[i] *materialDiffuseColor * directionalLightWeighting;
+        if(directionalLightWeighting>0.0)
+        {
+            vec3 halfDir = normalize(-lightDirection + eyeVector);
+            float specAngle = max(dot(halfDir, normal), 0.0);
+            specular = pow(specAngle, 4.0);
+            iSpecular+=uDirectionalSpecularColor[i]*materialSpecularColor*specular;
+        }
+    }
+
+
+    for(int  i = 0;i < NUM_POSITIONAL_LIGHTS ; i++){
+    vec3 lightDirection = normalize(uLightRay[i]);
+
+    float directionalLightWeighting = max(dot(normal, -lightDirection), 0.0);
+    iDiffuse+=uPositionalDiffuseColor[i] *materialDiffuseColor * directionalLightWeighting;
+
+        if(directionalLightWeighting>0.0)
+        {
+            vec3 halfDir = normalize(-lightDirection + eyeVector);
+            float specAngle = max(dot(halfDir, normal), 0.0);
+            specular = pow(specAngle, 4.0);
+            iSpecular+=uPositionalSpecularColor[i]*materialSpecularColor*specular;
+        }
+
+    }
+    vec3 iColor =iAmbient+ iDiffuse+iSpecular;
+
+    gl_FragColor = vec4(iColor, 1.0);
+    }
+</script>
+
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec3 aVertexNormal;
+    uniform mat4 mVMatrix;
+    uniform mat4 pMatrix;
+    uniform mat4 nMatrix;
+    varying vec3 transformedNormal;
+    varying vec3 vertexPos;
+    const int NUM_POSITIONAL_LIGHTS = 2;
+    uniform vec3 uLightPosition[NUM_POSITIONAL_LIGHTS];
+
+    varying vec3 uLightRay[NUM_POSITIONAL_LIGHTS];
+
+
+    void main(void) {
+    vec4 vertexPos4 =  mVMatrix * vec4(aVertexPosition, 1.0);
+    vertexPos = vertexPos4.xyz;
+    for(int i = 0; i < NUM_POSITIONAL_LIGHTS; i++){
+    vec4 newLightPosition=mVMatrix * vec4(uLightPosition[i], 1.0);
+
+    uLightRay[i]=vertexPos-newLightPosition.xyz;
+    }
+
+
+    transformedNormal = vec3(nMatrix * vec4(aVertexNormal,1.0));
+    gl_Position= pMatrix *vertexPos4;
+    }
+
+
+</script>
+
+
+<script type="text/javascript">
+
+    var gl;
+    var shaderProgram;
+    var mvMatrix = mat4.create();
+    var pMatrix = mat4.create();
+    var stage;
+
+    var matrixStack = [];
+   
+    var lightColor= [0.5,0.5,0.5];
+    var countFrameCycles=0;
+    function pushMatrix() {
+        var copy = mat4.create();
+        mat4.copy(copy,mvMatrix);
+        matrixStack.push(copy);
+    }
+
+    function popMatrix() {
+        if (matrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = matrixStack.pop();
+    }
+
+    function start() {
+        var canvas = document.getElementById("squareWithDrawArrays");
+        document.onkeydown = handleKeyDown;
+            initGL(canvas);
+
+            initShaders();
+            stage=new Stage(gl);
+
+
+        addStageObject("model/obj/terrain.json",[0.0,0.0,0.0],0.00,0.0,0.0);
+        addStageObject("model/obj/building.json",[55.0,0.0,170],0.0,0.0,0.0);
+        addStageObject("model/obj/giantPillar.json",[-60.0,0.0,-200],0.0,0.0,0.0);
+        addStageObject("model/obj/pillarBroken.json",[10.0,0.0,-200.00],0.0,0.0,0.0);
+        addStageObject("model/obj/streetlamp.json",[20.0,0.0,200.00],0.0,0.0,0.0);
+        addStageObject("model/obj/cityLine.json",[12.0,0.0,-335.0],0,3.14,0.0);
+        addStageObject("model/obj/railing.json",[0.0,5.0,200.0],0.0,0.0,0.0);
+        addStageObject("model/obj/dump.json",[-40.0,0.0,-30.0],0.0,0.0,0.0);
+
+        initScene();
+        
+    }
+    function handleKeyDown(event) {
+        handleKeys(event.keyCode);
+    }
+    function addStageObject(url,location,rotationX,rotationY,rotationZ){
+        $.getJSON(url, function(data) {
+            var stageObject = new StageObject();
+            stageObject.loadObject(data);
+            cloneObjects(stageObject);
+            stageObject.location = location;
+            stageObject.rotationX = rotationX;
+            stageObject.rotationY = rotationY;
+            stageObject.rotationZ = rotationZ;
+            stage.addModel(stageObject);
+
+
+        });
+
+    }
+    function cloneObjects(stageObject){
+        if(stageObject.name=="building"){
+
+        var building1=stageObject.clone();
+            var building2=stageObject.clone();
+            var building3=stageObject.clone();
+            building1.location=[-85.0,0.0,170.0];
+            building2.location=[-85.0,0.0,-110.0];
+            building3.location=[55.0,0.0,-110.0];
+
+            stage.addModel(building1);
+            stage.addModel(building2);
+            stage.addModel(building3);
+
+
+        }
+        if(stageObject.name=="streetlamp"){
+
+            var streetlamp1=stageObject.clone();
+            var streetlamp2=stageObject.clone();
+            var streetlamp3=stageObject.clone();
+            var streetlamp4=stageObject.clone();
+            var streetlamp5=stageObject.clone();
+
+            streetlamp1.location=[20.0,0.0,70.0];
+            streetlamp1.rotationX=degToRadian(-90);
+            streetlamp2.location=[20.0,0.0,-100.0];
+            streetlamp3.location = [-50.0, 0.0, 180.0];
+            streetlamp3.rotationZ=degToRadian(-65);
+            streetlamp4.location=[-50.0,0.0,0.0];
+            streetlamp5.location=[-50.0,0.0,-100.0];
+
+            stage.addModel(streetlamp1);
+            stage.addModel(streetlamp2);
+            stage.addModel(streetlamp3);
+            stage.addModel(streetlamp4);
+            stage.addModel(streetlamp5);
+
+
+        }
+        if(stageObject.name=="railing"){
+
+            var railing1=stageObject.clone();
+            var railing2=stageObject.clone();
+
+            railing1.location=[40.0,2.0,0.0];
+            railing1.rotationY=degToRadian(-120);
+            railing2.location=[-30.0,5.0,-100.0];
+
+            railing2.rotationY=degToRadian(-65);
+
+
+            stage.addModel(railing1);
+            stage.addModel(railing2);
+
+
+        }
+        if(stageObject.name=="dump"){
+            var dump1=stageObject.clone();
+            dump1.location=[-30.0,0.0,200.0];
+            stage.addModel(dump1);
+        }
+    }
+    
+
+    function initScene(){
+
+            gl.clearColor(1.0, 1.0, 1.0, 1.0);
+            gl.enable(gl.DEPTH_TEST);
+            mat4.identity(mvMatrix);
+            mat4.translate(mvMatrix,mvMatrix, [25.0,-25.0,-290]);
+        tick();
+    
+    }
+    function tick(){
+        requestAnimFrame(tick);
+
+        drawScene();
+    }
+    function handleKeys(keyCode) {
+        var flag=false;
+        if (keyCode == 38) {
+            // Up cursor key
+            mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, 2]);
+        }
+
+        if (keyCode == 40) {
+            // Down cursor key
+            mat4.translate(mvMatrix, mvMatrix, [0.0, 0.0, -2]);
+
+        }
+
+    }
+    
+    function initGL(canvas) {
+        
+            var names = ["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"];
+
+            for (var i = 0; i < names.length; ++i) {
+                try {
+                    gl = canvas.getContext(names[i]);
+                }
+                catch (e) { }
+                if (gl) {
+                    break;
+                }
+            }
+            if (gl == null) {
+                alert("Could not initialise WebGL");
+                return null;
+            }
+		
+            gl.viewportWidth = canvas.width;
+            gl.viewportHeight = canvas.height;
+
+            return;
+    }
+
+
+    function getShader(gl, id) {
+        var shaderScript = document.getElementById(id);
+        if (!shaderScript) {
+            return null;
+        }
+
+        var str = "";
+        var k = shaderScript.firstChild;
+        while (k) {
+            if (k.nodeType == 3) {
+                str += k.textContent;
+            }
+            k = k.nextSibling;
+        }
+
+        var shader;
+        if (shaderScript.type == "x-shader/x-fragment") {
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+        } else if (shaderScript.type == "x-shader/x-vertex") {
+            shader = gl.createShader(gl.VERTEX_SHADER);
+        } else {
+            return null;
+        }
+
+        gl.shaderSource(shader, str);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert(gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    function initShaders() {
+        var fragmentShader = getShader(gl, "shader-fs");
+        var vertexShader = getShader(gl, "shader-vs");
+
+        shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise shaders");
+        }
+
+        gl.useProgram(shaderProgram);
+
+        shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+        shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal");
+        gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute);
+
+
+        shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "pMatrix");
+        shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "mVMatrix");
+        shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "nMatrix");
+
+        shaderProgram.uAmbientColor = gl.getUniformLocation(shaderProgram, "uAmbientColor");
+        shaderProgram.uLightDirection = gl.getUniformLocation(shaderProgram, "uLightDirection");
+        shaderProgram.uPositionalDiffuseColor = gl.getUniformLocation(shaderProgram, "uPositionalDiffuseColor");
+        shaderProgram.uPositionalSpecularColor = gl.getUniformLocation(shaderProgram, "uPositionalSpecularColor");
+        shaderProgram.uDirectionalDiffuseColor = gl.getUniformLocation(shaderProgram, "uDirectionalDiffuseColor");
+        shaderProgram.uDirectionalSpecularColor = gl.getUniformLocation(shaderProgram, "uDirectionalSpecularColor");
+        shaderProgram.uLightPosition = gl.getUniformLocation(shaderProgram, "uLightPosition");
+        shaderProgram.materialDiffuseColor = gl.getUniformLocation(shaderProgram, "materialDiffuseColor");
+        shaderProgram.materialAmbientColor = gl.getUniformLocation(shaderProgram, "materialAmbientColor");
+        shaderProgram.materialSpecularColor = gl.getUniformLocation(shaderProgram, "materialSpecularColor");
+    }
+
+
+   
+   
+
+
+    
+   
+
+
+    function setMatrixUniforms() {
+        gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+        var invertMatrix = mat4.create();
+        mat4.invert(invertMatrix, mvMatrix);
+        var normalMatrix=mat4.create();
+        mat4.transpose(normalMatrix, invertMatrix)
+        gl.uniformMatrix4fv(shaderProgram.nMatrixUniform, false, normalMatrix);
+    }
+    function setLightUniform(){
+        var light=new Light();
+        light.ambientColor=[0.1,0.1,0.1];
+        light.diffuseColor=[0.5,0.5,0.5];
+        light.specularColor=[1.0,1.0,1.0];
+        light.direction=[0,-1.25,-1.25];
+        var light1=new Light();
+        light1.diffuseColor=[lightColor[0],lightColor[1],lightColor[2]];
+        light1.specularColor=[0.0,0.0,0.0];
+        light1.position=[20.0,5.0,-100.0];
+        var light2=new Light();
+        light2.diffuseColor= [1.0,1.0,1.0];
+        light2.specularColor=[0.0,0.0,0.0];
+        light2.position=[20.0,5.0,200.0];
+        var lights=new Lights();
+        lights.addLight(light);
+        lights.addLight(light1);
+        lights.addLight(light2);
+        gl.uniform3fv(shaderProgram.uAmbientColor,lights.getDataByType("ambientColor"));
+        gl.uniform3fv(shaderProgram.uDirectionalDiffuseColor,lights.getDataByType("diffuseColor","direction"));
+        gl.uniform3fv(shaderProgram.uDirectionalSpecularColor,lights.getDataByType("specularColor","direction"));
+        gl.uniform3fv(shaderProgram.uPositionalDiffuseColor,lights.getDataByType("diffuseColor","position"));
+        gl.uniform3fv(shaderProgram.uPositionalSpecularColor,lights.getDataByType("specularColor","position"));
+        gl.uniform3fv(shaderProgram.uLightPosition, lights.getDataByType("position"));
+        gl.uniform3fv(shaderProgram.uLightDirection, lights.getDataByType("direction"));
+    }
+    function degToRadian(angle){
+        return (angle*22/7)/180;
+    }
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        mat4.perspective(pMatrix,degToRadian(55), gl.viewportWidth / gl.viewportHeight, 0.1, 1000.0);
+
+
+
+        countFrameCycles+=1;
+        if(countFrameCycles>=100){
+            if(lightColor[0]==0.5){
+                lightColor=[0.0,0.0,0.0];
+            }
+            else{
+                lightColor=[0.5,0.5,0.5];
+
+            }
+            countFrameCycles=0;
+
+        }
+
+        for(var i=0;i<stage.stageObjects.length;++i){
+
+        pushMatrix();
+        mat4.translate(mvMatrix,mvMatrix, stage.stageObjects[i].location);
+        mat4.rotateX(mvMatrix,mvMatrix,stage.stageObjects[i].rotationX);
+        mat4.rotateY(mvMatrix,mvMatrix,stage.stageObjects[i].rotationY);
+        mat4.rotateZ(mvMatrix,mvMatrix,stage.stageObjects[i].rotationZ);
+        setLightUniform();
+        setMatrixUniforms();
+        gl.bindBuffer(gl.ARRAY_BUFFER, stage.stageObjects[i].vbo);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, stage.stageObjects[i].vbo.itemSize, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER,stage.stageObjects[i].nbo);
+        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, stage.stageObjects[i].nbo.itemSize, gl.FLOAT, false, 0, 0);
+        gl.uniform3f(shaderProgram.materialDiffuseColor,stage.stageObjects[i].diffuseColor[0],stage.stageObjects[i].diffuseColor[1],stage.stageObjects[i].diffuseColor[2]);
+        gl.uniform3f(shaderProgram.materialAmbientColor,stage.stageObjects[i].ambientColor[0],stage.stageObjects[i].ambientColor[1],stage.stageObjects[i].ambientColor[2]);
+        gl.uniform3f(shaderProgram.materialSpecularColor,stage.stageObjects[i].specularColor[0],stage.stageObjects[i].specularColor[1],stage.stageObjects[i].specularColor[2]);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, stage.stageObjects[i].ibo);
+        gl.drawElements(gl.TRIANGLES, stage.stageObjects[i].geometry.indices.length, gl.UNSIGNED_SHORT,0);
+
+            popMatrix();
+
+        }
+
+    }
+
+
+
+
+
+
+
+</script>
+
+
+</head>
+
+
+<body onload="start();">
+
+
+
+<canvas id="squareWithDrawArrays" style="border: none;" width="900px" height="650px"></canvas>
+ </body>
+
+</html>

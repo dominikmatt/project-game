@@ -86,7 +86,7 @@
         waterTex.repeat.set(2,2);
 
         water.rotation.x = -Math.PI / 2;
-        water.position.y = 1;
+        water.position.y = -100;
         scene.add(water);
     };
 
@@ -107,15 +107,19 @@
         var material = getCustomMaterial();
         loader.load('/example/models/terrain-test-1/RollingHills.dae', function(collada) {
             collada.scene.children.forEach(function(child) {
-                child.children.forEach(function(sub) {
+                child.children.forEach(function(sub, key) {
+                    if (key > 0) {
+                        return;
+                    }
+
                     if (sub.name === 'TerrainCell') {
                         var mesh = sub.children[0];
                         var box = new THREE.Box3().setFromObject( mesh );
                         console.log( box.min, box.max, box.size() );
-                        sub.children[0] = new Physijs.HeightfieldMesh(
+                        // TODO: test ConcaveMesh
+                        sub.children[0] = new Physijs.PlaneMesh(
                             mesh.geometry,
-                            material,
-                            0
+                            Physijs.createMaterial(material, 0.8, 0.2)
                         );
                     }
                 });
@@ -282,7 +286,8 @@
         }
 
         if (controls.down) {
-            velocity.z += walkingSpeed * delta;
+            player.position.z += 10;
+            //velocity.z += walkingSpeed * delta;
         }
 
         if (controls.left) {
