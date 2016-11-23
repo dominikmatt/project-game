@@ -8,7 +8,9 @@ var watchify = require('watchify');
 function compile(watch) {
     var bundler = watchify(
                       browserify('./web/js/index.js', { debug: true })
-                          .transform("babelify", {})
+                      .transform("babelify", {
+                          presets: ["es2015"]
+                      })
                 );
 
     function rebundle() {

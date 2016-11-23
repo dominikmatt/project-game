@@ -1,6 +1,6 @@
 'use strict';
 
-import THREE from 'three';
+var THREE = require('three');
 import scene from './Scene.js';
 import camera from './Camera.js';
 

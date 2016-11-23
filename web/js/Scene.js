@@ -1,6 +1,6 @@
 'use strict';
 
-import THREE from 'three';
+var THREE = require('three');
 var Physijs = require('physijs-browserify')(THREE);
 
 /**

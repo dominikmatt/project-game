@@ -5,7 +5,7 @@ import renderer from './Renderer.js';
 import map from './Map/Map.js';
 import Player from './Player/Player.js';
 import camera from './Camera.js';
-import THREE from 'three';
+var THREE = require('three');
 var Physijs = require('physijs-browserify')(THREE);
 
 window.THREE = THREE;
@@ -57,10 +57,13 @@ export default class Bootstrap {
 
         this.map = map;
         this.map.createTerrain();
-        this.player = Player.instance;
-        this.player.create();
+        /*this.player = Player.instance;
+        this.player.create();*/
 
-        this.render();
+        setTimeout(() => {
+            console.debug('start rendering');
+            this.render();
+        }, 1000);
     }
 
     /**
@@ -68,7 +71,7 @@ export default class Bootstrap {
      */
     render() {
         var delta = this.clock.getDelta();
-        this.player.update(delta);
+        //this.player.update(delta);
         camera.update(this.raycaster, this.mouse);
         scene.scene.simulate();
 
