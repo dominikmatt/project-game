@@ -30,7 +30,7 @@ class Camera {
          */
         this._camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-        this.camera.position.set(0, -30, 0);
+        this.camera.position.set(0, 30, 50);
     }
 
     /**
@@ -44,7 +44,7 @@ class Camera {
         return this[singleton];
     }
 
-    update(raycaster, mouse) {
+    update() {
 
     }
 

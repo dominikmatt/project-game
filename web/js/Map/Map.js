@@ -41,24 +41,54 @@ class Map {
         return this[singleton];
     }
 
-    createTerrain() {
+    /**
+     * Create Terrain.
+     */
+    createTerrain(onMapLoaded) {
+        this.onMapLoaded = onMapLoaded;
         this.initTerrain();
     }
 
+    /**
+     * Initialize TerrainGeometry.
+     */
     initTerrain() {
-        let terrrainGeometry = new TerrainGeometry({
-            map: 'map-1'
+        this.terrrainGeometry = new TerrainGeometry({
+            map: 'map-2'
         });
-        terrrainGeometry.createGeometry();
-        let mesh = new THREE.Mesh(terrrainGeometry.bufferGeometry, new THREE.MeshBasicMaterial({
-            color: 0xFFFFFF,
-            wireframe: true
-        }));
-        mesh.name = 'Terrain';
+        let groundGeometryLoader = this.terrrainGeometry.createGeometry();
 
-        scene.scene.add(mesh);
+        groundGeometryLoader
+            .then(this.onGeometryGenerated.bind(this));
+    }
 
-        camera.camera.lookAt(mesh.position);
+    /**
+     * Called after TerrainGeometry is ready.
+     */
+    onGeometryGenerated() {
+        let groundMaterial = Physijs.createMaterial(
+            new THREE.MeshBasicMaterial({
+                wireframe: true
+            }),
+            .8, // high friction
+            .4 // low restitution
+        );
+
+        var ground = new Physijs.HeightfieldMesh(
+            this.terrrainGeometry.groundGeometry,
+            groundMaterial,
+            0, // mass
+            this.terrrainGeometry.mapWidth,
+            this.terrrainGeometry.mapLength
+        );
+        ground.rotation.x = Math.PI / -2;
+        ground.receiveShadow = true;
+        ground.name = 'Ground';
+
+        camera.camera.lookAt(ground.position);
+        scene.scene.add( ground );
+
+        this.onMapLoaded.call(null);
     }
 
     /**

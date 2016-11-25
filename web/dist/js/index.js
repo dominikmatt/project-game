@@ -43725,20 +43725,15 @@ var _Map = require('./Map/Map.js');
 
 var _Map2 = _interopRequireDefault(_Map);
 
-var _Player = require('./Player/Player.js');
+var _Game = require('./Game.js');
 
-var _Player2 = _interopRequireDefault(_Player);
-
-var _Camera = require('./Camera.js');
-
-var _Camera2 = _interopRequireDefault(_Camera);
+var _Game2 = _interopRequireDefault(_Game);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var THREE = require('three');
-var Physijs = require('physijs-browserify')(THREE);
 
 window.THREE = THREE;
 
@@ -43788,42 +43783,16 @@ var Bootstrap = function () {
     }, {
         key: 'onLoad',
         value: function onLoad() {
-            var _this = this;
-
-            this.clock = new THREE.Clock();
-
             this.scene = _Scene2.default;
-            this.renderer = _Renderer2.default;
-
-            this.renderer.addAxis();
+            _Renderer2.default.addAxis();
 
             this.map = _Map2.default;
-            this.map.createTerrain();
-            /*this.player = Player.instance;
-            this.player.create();*/
-
-            setTimeout(function () {
-                console.debug('start rendering');
-                _this.render();
-            }, 1000);
+            this.map.createTerrain(this.onMapLoaded);
         }
-
-        /**
-         * render scene
-         */
-
     }, {
-        key: 'render',
-        value: function render() {
-            var delta = this.clock.getDelta();
-            //this.player.update(delta);
-            _Camera2.default.update(this.raycaster, this.mouse);
-            _Scene2.default.scene.simulate();
-
-            //this.cube.position.y -= 0.001;
-
-            requestAnimationFrame(this.render.bind(this));
-            this.renderer.render();
+        key: 'onMapLoaded',
+        value: function onMapLoaded() {
+            _Game2.default.start();
         }
     }]);
 
@@ -43832,7 +43801,7 @@ var Bootstrap = function () {
 
 exports.default = Bootstrap;
 
-},{"./Camera.js":4,"./Map/Map.js":5,"./Player/Player.js":8,"./Renderer.js":9,"./Scene.js":10,"physijs-browserify":1,"three":2}],4:[function(require,module,exports){
+},{"./Game.js":5,"./Map/Map.js":6,"./Renderer.js":8,"./Scene.js":9,"three":2}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43881,7 +43850,7 @@ var Camera = function () {
      */
     this._camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    this.camera.position.set(0, -30, 0);
+    this.camera.position.set(0, 30, 50);
   }
 
   /**
@@ -43891,7 +43860,7 @@ var Camera = function () {
 
   _createClass(Camera, [{
     key: 'update',
-    value: function update(raycaster, mouse) {}
+    value: function update() {}
 
     /**
      * @returns {THREE.PerspectiveCamera}
@@ -43918,7 +43887,106 @@ var Camera = function () {
 
 exports.default = Camera.instance;
 
-},{"./Scene.js":10,"three":2}],5:[function(require,module,exports){
+},{"./Scene.js":9,"three":2}],5:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Scene = require('./Scene.js');
+
+var _Scene2 = _interopRequireDefault(_Scene);
+
+var _Renderer = require('./Renderer.js');
+
+var _Renderer2 = _interopRequireDefault(_Renderer);
+
+var _Camera = require('./Camera.js');
+
+var _Camera2 = _interopRequireDefault(_Camera);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var THREE = require('three');
+var Physijs = require('physijs-browserify')(THREE);
+
+/**
+ * @type {Symbol}
+ */
+var singleton = Symbol();
+
+/**
+ * @type {Symbol}
+ */
+var singletonEnforcer = Symbol();
+
+/**
+ * Scene of the Game.
+ * Created with PhysiJS
+ *
+ * @class Scene
+ */
+
+var Game = function () {
+  function Game(enforcer) {
+    _classCallCheck(this, Game);
+
+    if (enforcer != singletonEnforcer) throw "Cannot construct singleton Game";
+  }
+
+  /**
+   * @returns {Game}
+   */
+
+
+  _createClass(Game, [{
+    key: 'start',
+
+
+    /**
+     * Start Game means initialize player, objects,….
+     */
+    value: function start() {
+      this.clock = new THREE.Clock();
+      this.render();
+    }
+
+    /**
+     * Render Map
+     */
+
+  }, {
+    key: 'render',
+    value: function render() {
+      var delta = this.clock.getDelta();
+      _Camera2.default.update(); // update camera
+      _Scene2.default.scene.simulate(); // update physics
+
+      _Renderer2.default.render(); // render map
+      requestAnimationFrame(this.render.bind(this));
+    }
+  }], [{
+    key: 'instance',
+    get: function get() {
+      if (!this[singleton]) {
+        this[singleton] = new Game(singletonEnforcer);
+      }
+
+      return this[singleton];
+    }
+  }]);
+
+  return Game;
+}();
+
+exports.default = Game.instance;
+
+},{"./Camera.js":4,"./Renderer.js":8,"./Scene.js":9,"physijs-browserify":1,"three":2}],6:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -43981,25 +44049,54 @@ var Map = function () {
 
     _createClass(Map, [{
         key: 'createTerrain',
-        value: function createTerrain() {
+
+
+        /**
+         * Create Terrain.
+         */
+        value: function createTerrain(onMapLoaded) {
+            this.onMapLoaded = onMapLoaded;
             this.initTerrain();
         }
+
+        /**
+         * Initialize TerrainGeometry.
+         */
+
     }, {
         key: 'initTerrain',
         value: function initTerrain() {
-            var terrrainGeometry = new _TerrainGeometry2.default({
-                map: 'map-1'
+            this.terrrainGeometry = new _TerrainGeometry2.default({
+                map: 'map-2'
             });
-            terrrainGeometry.createGeometry();
-            var mesh = new THREE.Mesh(terrrainGeometry.bufferGeometry, new THREE.MeshBasicMaterial({
-                color: 0xFFFFFF,
+            var groundGeometryLoader = this.terrrainGeometry.createGeometry();
+
+            groundGeometryLoader.then(this.onGeometryGenerated.bind(this));
+        }
+
+        /**
+         * Called after TerrainGeometry is ready.
+         */
+
+    }, {
+        key: 'onGeometryGenerated',
+        value: function onGeometryGenerated() {
+            var groundMaterial = Physijs.createMaterial(new THREE.MeshBasicMaterial({
                 wireframe: true
-            }));
-            mesh.name = 'Terrain';
+            }), .8, // high friction
+            .4 // low restitution
+            );
 
-            _Scene2.default.scene.add(mesh);
+            var ground = new Physijs.HeightfieldMesh(this.terrrainGeometry.groundGeometry, groundMaterial, 0, // mass
+            this.terrrainGeometry.mapWidth, this.terrrainGeometry.mapLength);
+            ground.rotation.x = Math.PI / -2;
+            ground.receiveShadow = true;
+            ground.name = 'Ground';
 
-            _Camera2.default.camera.lookAt(mesh.position);
+            _Camera2.default.camera.lookAt(ground.position);
+            _Scene2.default.scene.add(ground);
+
+            this.onMapLoaded.call(null);
         }
 
         /**
@@ -44027,7 +44124,7 @@ var Map = function () {
 
 exports.default = Map.instance;
 
-},{"./../Camera.js":4,"./../Scene.js":10,"./TerrainGeometry.js":6,"physijs-browserify":1,"three":2}],6:[function(require,module,exports){
+},{"./../Camera.js":4,"./../Scene.js":9,"./TerrainGeometry.js":7,"physijs-browserify":1,"three":2}],7:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44036,9 +44133,20 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _Scene = require('./../Scene.js');
+
+var _Scene2 = _interopRequireDefault(_Scene);
+
+var _Camera = require('./../Camera.js');
+
+var _Camera2 = _interopRequireDefault(_Camera);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var THREE = require('three');
+var Physijs = require('physijs-browserify')(THREE);
 
 var TerrainGeometry = function () {
     function TerrainGeometry(config) {
@@ -44050,163 +44158,148 @@ var TerrainGeometry = function () {
         this.config = config;
 
         /**
-         * @type {THREE.BufferGeometry}
+         * @type {THREE.PlaneGeometry}
+         * @private
          */
-        this._bufferGeometry = null;
+        this._groundGeometry = null;
 
-        this.width = 2048;
-        this.length = 2048;
-        this.widthSegs = 1000;
-        this.lengthSegs = 1000;
-        this.heightScale = 200.0;
+        /**
+         * @type {number}
+         * @private
+         */
+        this._mapWidth = 0;
+
+        /**
+         * @type {number}
+         * @private
+         */
+        this._mapLength = 0;
+
+        return this.promise;
     }
+
+    /**
+     * Create Geometry for Terrain.
+     *
+     * @returns {Promise}
+     */
+
 
     _createClass(TerrainGeometry, [{
         key: 'createGeometry',
         value: function createGeometry() {
-            var vertsWidth = this.widthSegs + 1;
-            var vertsLength = this.lengthSegs + 1;
-            var numberOfVerts = vertsWidth * vertsLength;
-            var triangles = this.widthSegs * this.lengthSegs * 2;
-            var chunkSize = 21845;
+            var _this = this;
 
-            this.bufferGeometry = new THREE.BufferGeometry();
-            this.bufferGeometry.dynamic = true;
-
-            var indices = new Uint16Array(triangles * 3);
-            var positions = new Float32Array(numberOfVerts * 3);
-            var uvs = new Float32Array(numberOfVerts * 2);
-            var startX = -this.width * 0.5;
-            var startZ = -this.length * 0.5;
-            var tileX = this.width / (vertsWidth - 1);
-            var tileZ = this.length / (vertsLength - 1);
-
-            // positions and uvs
-            for (var length = 0; length < vertsLength; ++length) {
-                //i
-                for (var width = 0; width < vertsWidth; ++width) {
-                    //j
-                    var index = (length * vertsWidth + width) * 3;
-                    var uvIndex = (length * vertsWidth + width) * 2;
-
-                    positions[index + 0] = startX + width * tileX;
-                    positions[index + 1] = 0; // heightdata
-                    positions[index + 2] = startZ + length * tileZ;
-
-                    uvs[uvIndex + 0] = width / (vertsWidth - 1);
-                    uvs[uvIndex + 1] = 1.0 - length / (vertsLength - 1);
-                }
-            }
-
-            this.bufferGeometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-
-            // For each rectangle, generate its indices
-            var lastChunkRow = 0;
-            var lastChunkVertStart = 0;
-
-            for (var length = 0; length < this.lengthSegs; ++length) {
-                // i
-                var startVertIndex = length * vertsWidth;
-
-                if (startVertIndex - lastChunkVertStart + vertsWidth * 2 > chunkSize) {
-                    var newChunk = {
-                        start: lastChunkRow * this.widthSegs * 6,
-                        index: lastChunkVertStart,
-                        count: (length - lastChunkRow) * this.widthSegs * 6
-                    };
-
-                    this.bufferGeometry.groups.push(newChunk);
-
-                    lastChunkRow = length;
-                    lastChunkVertStart = startVertIndex;
-                }
-            }
-
-            this.terrainHeight = THREE.ImageUtils.loadTexture('/assets/maps/' + this.config.map + '/heightdata.png', undefined, this.onTerrainHeightmapLoaded.bind(this));
-
-            for (var width = 0; width < this.widthSegs; ++width) {
-                // j
-                var _index = (length * this.widthSegs + width) * 6;
-                var vertIndex = length * vertsWidth + width - lastChunkVertStart;
-
-                indices[_index + 0] = vertIndex;
-                indices[_index + 1] = vertIndex + vertsWidth;
-                indices[_index + 2] = vertIndex + 1;
-                indices[_index + 3] = vertIndex + 1;
-                indices[_index + 4] = vertIndex + vertsWidth;
-                indices[_index + 5] = vertIndex + vertsWidth + 1;
-            }
-
-            /*let lastChunk = {
-                start: lastChunkRow * this.widthSegs * 6,
-                index: lastChunkVertStart,
-                count: (this.lengthSegs - lastChunkRow) * this.widthSegs * 6
-            };
-             this.bufferGeom.offsets.push(lastChunk);*/
-            this.bufferGeometry.setIndex(new THREE.BufferAttribute(indices, 3));
-            this.bufferGeometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-            this.bufferGeometry.addAttribute('normal', new THREE.BufferAttribute(new Float32Array(numberOfVerts * 3), 3));
-            this.bufferGeometry.addAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-            this.bufferGeometry.computeBoundingSphere();
+            return new Promise(function (resolve, reject) {
+                _this.terrainHeight = THREE.ImageUtils.loadTexture('/assets/maps/' + _this.config.map + '/heightdata.png', undefined, _this.onTerrainHeightmapLoaded.bind(_this, resolve, reject));
+            });
         }
+
+        /**
+         * Called after heihtfield-image is loaded and generates the vertices.
+         *
+         * @param {Promise.resolve} resolve
+         * @param {Promise.reject} reject
+         */
+
     }, {
         key: 'onTerrainHeightmapLoaded',
-        value: function onTerrainHeightmapLoaded() {
-            console.debug('heightmap-image loaded…');
+        value: function onTerrainHeightmapLoaded(resolve, reject) {
             var heightData = this.getHeightImageData().data;
-            var mapWidth = this.terrainHeight.image.width;
-            var mapLength = this.terrainHeight.image.height;
+            var groundGeometry = new THREE.PlaneGeometry(this.mapWidth, this.mapLength, this.mapWidth - 1, this.mapLength - 1);
+            var verticesIndex = 0;
 
-            var widthVerts = this.widthSegs + 1;
-            var lengthVerts = this.lengthSegs + 1;
+            // Calculate Vertice height.
+            for (var index = 0; index < heightData.length; index += 4) {
+                var all = heightData[index] + heightData[index + 1] + heightData[index + 2];
 
-            for (var i = 0; i < lengthVerts; ++i) {
-
-                var percentHeight = i / (lengthVerts - 1);
-
-                for (var j = 0; j < widthVerts; ++j) {
-
-                    var percentWidth = j / (widthVerts - 1);
-
-                    var row = Math.round(percentHeight * (mapLength - 1));
-                    var column = Math.round(percentWidth * (mapWidth - 1));
-
-                    var rowPixel = row * mapWidth * 4;
-                    var columnPixel = column * 4;
-
-                    var index = rowPixel + columnPixel;
-
-                    var vertIndex = (i * widthVerts + j) * 3;
-
-                    this.bufferGeometry.attributes.position.array[vertIndex + 1] = heightData[index] * this.heightScale / 255.0;
-                }
+                // set it to PlaneGeometry
+                groundGeometry.vertices[verticesIndex].z = all / (12 * 6);
+                verticesIndex++;
             }
 
-            this.bufferGeometry.computeVertexNormals();
-            this.heightData = heightData;
+            groundGeometry.computeFaceNormals();
+            groundGeometry.computeVertexNormals();
+
+            this.groundGeometry = groundGeometry;
+
+            resolve();
         }
+
+        /**
+         * Append Heightfield image to dom.
+         *
+         * @returns {ImageData}
+         */
+
     }, {
         key: 'getHeightImageData',
         value: function getHeightImageData() {
             var canvas = document.createElement('canvas');
-            var mapWidth = this.terrainHeight.image.width;
-            var mapLength = this.terrainHeight.image.height;
             var context = canvas.getContext('2d');
+            this.mapWidth = this.terrainHeight.image.width;
+            this.mapLength = this.terrainHeight.image.height;
 
-            canvas.width = mapWidth;
-            canvas.height = mapLength;
+            canvas.width = this.mapWidth;
+            canvas.height = this.mapLength;
 
             context.drawImage(this.terrainHeight.image, 0, 0);
 
-            return context.getImageData(0, 0, mapWidth, mapLength);
+            return context.getImageData(0, 0, this.mapWidth, this.mapLength);
         }
+
+        /**
+         * @param {THREE.PlaneGeometry} groundGeometry
+         */
+
     }, {
-        key: 'bufferGeometry',
-        set: function set(bufferGeometry) {
-            this._bufferGeometry = bufferGeometry;
-        },
+        key: 'groundGeometry',
+        set: function set(groundGeometry) {
+            this._groundGeometry = groundGeometry;
+        }
+
+        /**
+         * @returns {THREE.PlaneGeometry}
+         */
+        ,
         get: function get() {
-            return this._bufferGeometry;
+            return this._groundGeometry;
+        }
+
+        /**
+         * @param {int} width
+         */
+
+    }, {
+        key: 'mapWidth',
+        set: function set(width) {
+            this._mapWidth = width;
+        }
+
+        /**
+         * @returns {int}
+         */
+        ,
+        get: function get() {
+            return this._mapWidth;
+        }
+
+        /**
+         * @param {int} length
+         */
+
+    }, {
+        key: 'mapLength',
+        set: function set(length) {
+            this._mapLength = length;
+        }
+
+        /**
+         * @returns {int}
+         */
+        ,
+        get: function get() {
+            return this._mapLength;
         }
     }]);
 
@@ -44215,477 +44308,7 @@ var TerrainGeometry = function () {
 
 exports.default = TerrainGeometry;
 
-},{"three":2}],7:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _Scene = require('./../Scene.js');
-
-var _Scene2 = _interopRequireDefault(_Scene);
-
-var _Camera = require('./../Camera.js');
-
-var _Camera2 = _interopRequireDefault(_Camera);
-
-var _Map = require('./../Map/Map.js');
-
-var _Map2 = _interopRequireDefault(_Map);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var THREE = require('three');
-
-
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
-THREE.PointerLockControls = function (camera) {
-
-    var scope = this;
-
-    camera.rotation.set(0, 0, 0);
-
-    var pitchObject = new THREE.Object3D();
-    pitchObject.add(camera);
-
-    var yawObject = new THREE.Object3D();
-    yawObject.position.y = 0;
-    yawObject.add(pitchObject);
-
-    var PI_2 = Math.PI / 2;
-
-    var onMouseMove = function onMouseMove(event) {
-        if (scope.enabled === false) return;
-
-        var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-        var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
-
-        yawObject.rotation.y -= movementX * 0.002;
-        pitchObject.rotation.x -= movementY * 0.002;
-
-        pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, pitchObject.rotation.x));
-    };
-
-    this.dispose = function () {
-
-        document.removeEventListener('mousemove', onMouseMove, false);
-    };
-
-    document.addEventListener('mousemove', onMouseMove, false);
-
-    this.enabled = false;
-
-    this.getObject = function () {
-
-        return yawObject;
-    };
-
-    this.getDirection = function () {
-
-        // assumes the camera itself is not rotated
-
-        var direction = new THREE.Vector3(0, 0, -1);
-        var rotation = new THREE.Euler(0, 0, 0, "YXZ");
-
-        return function (v) {
-
-            rotation.set(pitchObject.rotation.x, yawObject.rotation.y, 0);
-
-            v.copy(direction).applyEuler(rotation);
-
-            return v;
-        };
-    }();
-};
-
-/**
- * @class Controls
- */
-
-var Controls = function () {
-    function Controls() {
-        _classCallCheck(this, Controls);
-
-        this.body = document.body;
-
-        this.move = {
-            forward: false,
-            backward: false,
-            left: false,
-            right: false
-        };
-        this.speed = 200;
-        this.velocity = new THREE.Vector3();
-
-        this.bindEvents();
-        this.controls = new THREE.PointerLockControls(_Camera2.default.camera);
-        this.controls.enabled = true;
-
-        _Scene2.default.scene.add(this.controls.getObject());
-    }
-
-    /**
-     * bin all DOM events
-     */
-
-
-    _createClass(Controls, [{
-        key: 'bindEvents',
-        value: function bindEvents() {
-            document.body.addEventListener('click', this.onBodyClickHandler.bind(this));
-            document.addEventListener('keydown', this.onKeyDown.bind(this), false);
-            document.addEventListener('keyup', this.onKeyUp.bind(this), false);
-        }
-
-        /**
-         * start pointer lock
-         * TODO: create instructions and move it to that component
-         *
-         * @deprecated
-         */
-
-    }, {
-        key: 'onBodyClickHandler',
-        value: function onBodyClickHandler() {
-            this.body.requestPointerLock();
-        }
-
-        /**
-         * @param {Event} event
-         */
-
-    }, {
-        key: 'onKeyDown',
-        value: function onKeyDown(event) {
-            switch (event.keyCode) {
-                case 38: // up
-                case 87:
-                    // w
-                    this.move.forward = true;
-                    break;
-                case 37: // left
-                case 65:
-                    // a
-                    this.move.left = true;
-                    break;
-                case 40: // down
-                case 83:
-                    // s
-                    this.move.backward = true;
-                    break;
-                case 39: // right
-                case 68:
-                    // d
-                    this.move.right = true;
-                    break;
-                case 32:
-                    // space
-                    // TODO: implement jump
-                    break;
-            }
-        }
-
-        /**
-         * @param {Event} event
-         */
-
-    }, {
-        key: 'onKeyUp',
-        value: function onKeyUp(event) {
-            switch (event.keyCode) {
-                case 38: // up
-                case 87:
-                    // w
-                    this.move.forward = false;
-                    break;
-                case 37: // left
-                case 65:
-                    // a
-                    this.move.left = false;
-                    break;
-                case 40: // down
-                case 83:
-                    // s
-                    this.move.backward = false;
-                    break;
-                case 39: // right
-                case 68:
-                    // d
-                    this.move.right = false;
-                    break;
-                case 32:
-                    // space
-                    // TODO: implement jump
-                    break;
-            }
-        }
-
-        /**
-         * update move position
-         *
-         * @param {float} delta
-         * @param {Player} player
-         */
-
-    }, {
-        key: 'update',
-        value: function update(delta, player) {
-            var lastPosition = this.velocity;
-            this.velocity.x -= this.velocity.x * 10.0 * delta;
-            this.velocity.z -= this.velocity.z * 10.0 * delta;
-            this.velocity.y -= 9.8 * 100.0 * delta;
-
-            if (this.move.forward) this.velocity.z -= this.speed * delta;
-            if (this.move.backward) this.velocity.z += this.speed * delta;
-            if (this.move.left) this.velocity.x -= this.speed * delta;
-            if (this.move.right) this.velocity.x += this.speed * delta;
-
-            this.controls.getObject().translateX(this.velocity.x * delta);
-            this.controls.getObject().translateY(0);
-            this.controls.getObject().translateZ(this.velocity.z * delta);
-
-            if (this.move.forward) {
-                var distance = this.toBottom(delta);
-
-                if (distance == false) {
-                    console.debug('reset');
-                    this.controls.getObject().translateX(lastPosition.x * delta);
-                    this.controls.getObject().translateZ(lastPosition.z * delta);
-                    return;
-                }
-
-                this.controls.getObject().position.y -= distance;
-
-                if (this.controls.getObject().position.y <= 1) {
-                    this.controls.getObject().position.y = 1;
-
-                    this.speed = 100;
-                } else {
-                    this.speed = 200;
-                }
-
-                _Camera2.default.camera.position.y = this.controls.getObject().position.y;
-                //console.debug(this.controls.getObject().position);
-                //console.debug('position:', this.controls.getObject().position.y);
-            }
-        }
-
-        /**
-         * @param {flaot} delta
-         */
-
-    }, {
-        key: 'toBottom',
-        value: function toBottom(delta) {
-            if (!_Map2.default.terrain) {
-                return;
-            }
-
-            var slopeLimit = 0.03;
-            var slopeAngle = false;
-            var raycaster = new THREE.Raycaster();
-
-            raycaster.set(this.controls.getObject().position, new THREE.Vector3(0, -1, 0));
-
-            var intersects = raycaster.intersectObject(_Map2.default.terrain, true);
-
-            if (!intersects.length) {
-                this.controls.getObject().position.y += 10;
-                return this.toBottom(delta);
-            }
-
-            if (this.lastPosition) {
-                //slopeAngle = this.lastPosition.angleTo(intersects[0].point);
-            }
-
-            var slope = this.lastPosition - intersects[0].point.y;
-            this.lastPosition = intersects[0].point.y;
-
-            if (slope < -0.25 || slope > 0.25) {
-                console.info('stop');
-                return false;
-            }
-
-            return intersects[0].distance;
-        }
-    }]);
-
-    return Controls;
-}();
-
-exports.default = Controls;
-
-},{"./../Camera.js":4,"./../Map/Map.js":5,"./../Scene.js":10,"three":2}],8:[function(require,module,exports){
-'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _Scene = require('./../Scene.js');
-
-var _Scene2 = _interopRequireDefault(_Scene);
-
-var _Camera = require('./../Camera.js');
-
-var _Camera2 = _interopRequireDefault(_Camera);
-
-var _Map = require('./../Map/Map.js');
-
-var _Map2 = _interopRequireDefault(_Map);
-
-var _Controls = require('./Controls.js');
-
-var _Controls2 = _interopRequireDefault(_Controls);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var THREE = require('three');
-
-
-/**
- * @type {Symbol}
- */
-var singleton = Symbol();
-
-/**
- * @type {Symbol}
- */
-var singletonEnforcer = Symbol();
-
-/**
- * @class Player
- */
-
-var Player = function () {
-    function Player(enforcer) {
-        _classCallCheck(this, Player);
-
-        if (enforcer != singletonEnforcer) throw "Cannot construct singleton Player";
-    }
-
-    /**
-     * @returns {Camera}
-     */
-
-
-    _createClass(Player, [{
-        key: 'create',
-
-
-        /**
-         * create player
-         */
-        value: function create() {
-            var geometry = new THREE.CubeGeometry(1, 1, 1);
-            var material = new THREE.MeshNormalMaterial({
-                color: 0xff0000,
-                wireframe: true
-            });
-
-            this.player = new THREE.Mesh(geometry, material);
-            this.player.position.set(0, 50, 0);
-            this.player.name = 'Player';
-
-            _Scene2.default.scene.add(this.player);
-
-            this.controls = new _Controls2.default();
-        }
-
-        /**
-         * @param {flaot} delta
-         */
-
-    }, {
-        key: 'toBottom',
-        value: function toBottom(delta) {
-            if (!_Map2.default.terrain) {
-                return;
-            }
-
-            var raycaster = new THREE.Raycaster();
-            var velocity = new THREE.Vector3();
-            var distance = 0;
-            var objects = [];
-
-            raycaster.set(this.player.position, new THREE.Vector3(0, -1, 0));
-            _Map2.default.terrain.children.forEach(function (child) {
-                child.children.forEach(function (sub) {
-                    objects.push(sub);
-                });
-            });
-
-            var intersects = raycaster.intersectObjects(objects, true);
-
-            if (!intersects.length) {
-                this.player.position.y = 100;
-                return;
-            }
-
-            if (distance < intersects[0].distance) {
-                this.player.position.y -= intersects[0].distance - 1; // the -1 is a fix for a shake effect I had
-            }
-
-            // TODO: add wather physics
-            if (this.player.position.y < 0) {
-                this.player.position.y = 0;
-            }
-
-            //gravity and prevent falling through floor
-            if (distance >= intersects[0].distance && velocity.y <= 0) {
-                velocity.y = 0;
-            } else if (distance <= intersects[0].distance && velocity.y === 0) {
-                velocity.y -= delta;
-            }
-        }
-    }, {
-        key: 'update',
-
-
-        /**
-         * @param {float} delta
-         */
-        value: function update(delta) {
-            this.toBottom(delta);
-            this.controls.update(delta, this);
-        }
-    }, {
-        key: 'player',
-        set: function set(player) {
-            this._player = player;
-        },
-        get: function get() {
-            return this._player;
-        }
-    }], [{
-        key: 'instance',
-        get: function get() {
-            if (!this[singleton]) {
-                this[singleton] = new Player(singletonEnforcer);
-            }
-
-            return this[singleton];
-        }
-    }]);
-
-    return Player;
-}();
-
-exports.default = Player;
-
-},{"./../Camera.js":4,"./../Map/Map.js":5,"./../Scene.js":10,"./Controls.js":7,"three":2}],9:[function(require,module,exports){
+},{"./../Camera.js":4,"./../Scene.js":9,"physijs-browserify":1,"three":2}],8:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44799,7 +44422,7 @@ var Renderer = function () {
 
 exports.default = Renderer.instance;
 
-},{"./Camera.js":4,"./Scene.js":10,"three":2}],10:[function(require,module,exports){
+},{"./Camera.js":4,"./Scene.js":9,"three":2}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -44879,7 +44502,7 @@ var Scene = function () {
 
 exports.default = Scene.instance;
 
-},{"physijs-browserify":1,"three":2}],11:[function(require,module,exports){
+},{"physijs-browserify":1,"three":2}],10:[function(require,module,exports){
 'use strict';
 
 var _Bootstrap = require('./Bootstrap.js');
@@ -44890,7 +44513,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var bootstrap = new _Bootstrap2.default();
 
-},{"./Bootstrap.js":3}]},{},[11])
+},{"./Bootstrap.js":3}]},{},[10])
 
 
 //# sourceMappingURL=index.js.map

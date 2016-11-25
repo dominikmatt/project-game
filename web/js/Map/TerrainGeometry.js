@@ -1,5 +1,9 @@
 'use strict';
 var THREE = require('three');
+var Physijs = require('physijs-browserify')(THREE);
+
+import scene from './../Scene.js';
+import camera from './../Camera.js';
 
 export default class TerrainGeometry {
     constructor(config) {
@@ -9,161 +13,127 @@ export default class TerrainGeometry {
         this.config = config;
 
         /**
-         * @type {THREE.BufferGeometry}
+         * @type {THREE.PlaneGeometry}
+         * @private
          */
-        this._bufferGeometry = null;
+        this._groundGeometry = null;
 
-        this.width = 2048;
-        this.length = 2048;
-        this.widthSegs = 1000;
-        this.lengthSegs = 1000;
-        this.heightScale = 200.0;
+        /**
+         * @type {number}
+         * @private
+         */
+        this._mapWidth = 0;
+
+        /**
+         * @type {number}
+         * @private
+         */
+        this._mapLength = 0;
+
+        return this.promise;
     }
 
+    /**
+     * Create Geometry for Terrain.
+     *
+     * @returns {Promise}
+     */
     createGeometry() {
-        let vertsWidth = this.widthSegs + 1;
-        let vertsLength = this.lengthSegs + 1;
-        let numberOfVerts = vertsWidth * vertsLength;
-        let triangles = this.widthSegs * this.lengthSegs * 2;
-        let chunkSize = 21845;
-
-        this.bufferGeometry = new THREE.BufferGeometry();
-        this.bufferGeometry.dynamic = true;
-
-        let indices = new Uint16Array(triangles * 3);
-        let positions = new Float32Array(numberOfVerts * 3);
-        let uvs = new Float32Array(numberOfVerts * 2);
-        let startX = -this.width * 0.5;
-        let startZ = -this.length * 0.5;
-        let tileX = this.width / (vertsWidth - 1);
-        let tileZ = this.length / (vertsLength - 1);
-
-        // positions and uvs
-        for (var length = 0; length < vertsLength; ++length) { //i
-            for (var width = 0; width < vertsWidth; ++width) { //j
-                let index = (length * vertsWidth + width) * 3;
-                let uvIndex = (length * vertsWidth + width) * 2;
-
-                positions[index + 0] = startX + width * tileX;
-                positions[index + 1] = 0; // heightdata
-                positions[index + 2] = startZ + length * tileZ;
-
-                uvs[uvIndex + 0] = width / (vertsWidth - 1);
-                uvs[uvIndex + 1] = 1.0 - length / (vertsLength - 1);
-
-            }
-        }
-
-        this.bufferGeometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-
-        // For each rectangle, generate its indices
-        var lastChunkRow = 0;
-        var lastChunkVertStart = 0;
-
-        for (var length = 0; length < this.lengthSegs; ++length) { // i
-            let startVertIndex = length * vertsWidth;
-
-            if ((startVertIndex - lastChunkVertStart) + vertsWidth * 2 > chunkSize) {
-                let newChunk = {
-                    start: lastChunkRow * this.widthSegs * 6,
-                    index: lastChunkVertStart,
-                    count: (length - lastChunkRow) * this.widthSegs * 6
-                };
-
-                this.bufferGeometry.groups.push(newChunk);
-
-                lastChunkRow = length;
-                lastChunkVertStart = startVertIndex;
-            }
-        }
-
-        this.terrainHeight = THREE.ImageUtils.loadTexture(
-            '/assets/maps/' + this.config.map + '/heightdata.png',
-            undefined,
-            this.onTerrainHeightmapLoaded.bind(this)
-        );
-
-        for (var width = 0; width < this.widthSegs; ++width) { // j
-            let index = (length * this.widthSegs + width) * 6;
-            let vertIndex = (length * vertsWidth + width) - lastChunkVertStart;
-
-            indices[index + 0] = vertIndex;
-            indices[index + 1] = vertIndex + vertsWidth;
-            indices[index + 2] = vertIndex + 1;
-            indices[index + 3] = vertIndex + 1;
-            indices[index + 4] = vertIndex + vertsWidth;
-            indices[index + 5] = vertIndex + vertsWidth + 1;
-        }
-
-        /*let lastChunk = {
-            start: lastChunkRow * this.widthSegs * 6,
-            index: lastChunkVertStart,
-            count: (this.lengthSegs - lastChunkRow) * this.widthSegs * 6
-        };
-
-        this.bufferGeom.offsets.push(lastChunk);*/
-        this.bufferGeometry.setIndex(new THREE.BufferAttribute(indices, 3 ) );
-        this.bufferGeometry.addAttribute( 'position', new THREE.BufferAttribute(positions, 3 ) );
-        this.bufferGeometry.addAttribute( 'normal', new THREE.BufferAttribute(new Float32Array(numberOfVerts * 3), 3 ) );
-        this.bufferGeometry.addAttribute( 'uv', new THREE.BufferAttribute(uvs, 2 ) );
-        this.bufferGeometry.computeBoundingSphere();
+        return new Promise((resolve, reject) => {
+            this.terrainHeight = THREE.ImageUtils.loadTexture(
+                '/assets/maps/' + this.config.map + '/heightdata.png',
+                undefined,
+                this.onTerrainHeightmapLoaded.bind(this, resolve, reject)
+            );
+        })
     }
 
-    onTerrainHeightmapLoaded() {
-        console.debug('heightmap-image loaded…');
+    /**
+     * Called after heihtfield-image is loaded and generates the vertices.
+     *
+     * @param {Promise.resolve} resolve
+     * @param {Promise.reject} reject
+     */
+    onTerrainHeightmapLoaded(resolve, reject) {
         let heightData = this.getHeightImageData().data;
-        let mapWidth = this.terrainHeight.image.width;
-        let mapLength = this.terrainHeight.image.height;
+        let groundGeometry = new THREE.PlaneGeometry( this.mapWidth, this.mapLength, this.mapWidth - 1, this.mapLength - 1 );
+        let verticesIndex = 0;
 
-        var widthVerts = this.widthSegs + 1;
-        var lengthVerts = this.lengthSegs + 1;
+        // Calculate Vertice height.
+        for ( var index = 0; index < heightData.length; index += (4) ) {
+            var all = heightData[index]+heightData[index+1]+heightData[index+2];
 
-        for (var i = 0; i < lengthVerts; ++i) {
-
-            var percentHeight = i / (lengthVerts - 1);
-
-            for (var j = 0; j < widthVerts; ++j) {
-
-                var percentWidth = j / (widthVerts - 1);
-
-                var row = Math.round(percentHeight * (mapLength - 1));
-                var column = Math.round(percentWidth * (mapWidth - 1));
-
-                var rowPixel = row * mapWidth * 4;
-                var columnPixel = column * 4;
-
-                var index = rowPixel + columnPixel;
-
-                var vertIndex = (i * widthVerts + j) * 3;
-
-                this.bufferGeometry.attributes.position.array[vertIndex + 1] =
-                    heightData[index] * this.heightScale / 255.0;
-            }
+            // set it to PlaneGeometry
+            groundGeometry.vertices[verticesIndex].z = all/(12*6);
+            verticesIndex++;
         }
 
-        this.bufferGeometry.computeVertexNormals();
-        this.heightData = heightData;
+        groundGeometry.computeFaceNormals();
+        groundGeometry.computeVertexNormals();
+
+        this.groundGeometry = groundGeometry;
+
+        resolve();
     }
 
+    /**
+     * Append Heightfield image to dom.
+     *
+     * @returns {ImageData}
+     */
     getHeightImageData() {
         let canvas = document.createElement('canvas');
-        let mapWidth = this.terrainHeight.image.width;
-        let mapLength = this.terrainHeight.image.height;
         let context = canvas.getContext('2d');
+        this.mapWidth = this.terrainHeight.image.width;
+        this.mapLength = this.terrainHeight.image.height;
 
-        canvas.width = mapWidth;
-        canvas.height = mapLength;
+        canvas.width = this.mapWidth;
+        canvas.height = this.mapLength;
 
         context.drawImage(this.terrainHeight.image, 0, 0);
 
-        return context.getImageData(0, 0, mapWidth, mapLength);
+        return context.getImageData(0, 0, this.mapWidth, this.mapLength);
     }
 
-    set bufferGeometry(bufferGeometry) {
-        this._bufferGeometry = bufferGeometry;
+    /**
+     * @param {THREE.PlaneGeometry} groundGeometry
+     */
+    set groundGeometry(groundGeometry) {
+        this._groundGeometry = groundGeometry;
     }
 
-    get bufferGeometry() {
-        return this._bufferGeometry;
+    /**
+     * @returns {THREE.PlaneGeometry}
+     */
+    get groundGeometry() {
+        return this._groundGeometry;
+    }
+
+    /**
+     * @param {int} width
+     */
+    set mapWidth(width) {
+        this._mapWidth = width;
+    }
+
+    /**
+     * @returns {int}
+     */
+    get mapWidth() {
+        return this._mapWidth;
+    }
+
+    /**
+     * @param {int} length
+     */
+    set mapLength(length) {
+        this._mapLength = length;
+    }
+
+    /**
+     * @returns {int}
+     */
+    get mapLength() {
+        return this._mapLength;
     }
 }
