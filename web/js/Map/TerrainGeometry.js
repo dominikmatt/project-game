@@ -1,9 +1,4 @@
 'use strict';
-var THREE = require('three');
-var Physijs = require('physijs-browserify')(THREE);
-
-import scene from './../Scene.js';
-import camera from './../Camera.js';
 
 export default class TerrainGeometry {
     constructor(config) {

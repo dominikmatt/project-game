@@ -4,7 +4,6 @@ import scene from './Scene.js';
 import renderer from './Renderer.js';
 import map from './Map/Map.js';
 import game from './Game.js';
-var THREE = require('three');
 
 window.THREE = THREE;
 
@@ -35,9 +34,6 @@ export default class Bootstrap {
     /**
      */
     initialize() {
-        this.raycaster = new THREE.Raycaster();
-        this.mouse = new THREE.Vector2();
-
         window.onload = this.onLoad.bind(this);
     }
 

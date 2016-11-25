@@ -2,9 +2,7 @@
 import scene from './Scene.js';
 import renderer from './Renderer.js';
 import camera from './Camera.js';
-
-var THREE = require('three');
-var Physijs = require('physijs-browserify')(THREE);
+import player from './Player/Player.js';
 
 /**
  * @type {Symbol}
@@ -44,6 +42,7 @@ class Game {
     start() {
         this.clock = new THREE.Clock();
         this.render();
+        player.initialize();
     }
 
     /**
@@ -51,11 +50,12 @@ class Game {
      */
     render() {
         let delta = this.clock.getDelta();
+
         camera.update(); // update camera
         scene.scene.simulate(); // update physics
 
-        renderer.render(); // render map
         requestAnimationFrame( this.render.bind(this) );
+        renderer.render(); // render map
     }
 }
 
