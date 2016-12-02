@@ -1002,10 +1002,6 @@ var PointerLockControls = function (_ControlsKeyMapper) {
             // !!!!!!!!!! Rotation and movement of Player is correct !!!!!!!!!!
             // !!!!!!!!!! TODO: change x movement !!!!!!!!!
 
-            if (this.velocity.x === 0 && this.velocity.z === 0) {}
-            //return;
-
-
             // Vector of velocity the player already has
             var oldVector = this.player.getLinearVelocity();
             // Remove players matrix from default matrix

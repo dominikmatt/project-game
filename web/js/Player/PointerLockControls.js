@@ -79,16 +79,17 @@ export default class PointerLockControls extends ControlsKeyMapper {
         // !!!!!!!!!! Rotation and movement of Player is correct !!!!!!!!!!
         // !!!!!!!!!! TODO: change x movement !!!!!!!!!
 
-        if (this.velocity.x === 0 && this.velocity.z === 0) {
-            //return;
-        }
-
         // Vector of velocity the player already has
         const oldVector = this.player.getLinearVelocity();
         // Remove players matrix from default matrix
         const rotationMatrix = new THREE.Matrix4().extractRotation(this.player.matrix);
         // Calculate velocity for the player by matrix and set the y to the old velocity
-        const forceVector = new THREE.Vector3(this.velocity.x, oldVector.y, this.velocity.z).applyMatrix4(rotationMatrix);
+        const forceVector = new THREE.Vector3(
+            this.velocity.x,
+            oldVector.y,
+            this.velocity.z
+        )
+            .applyMatrix4(rotationMatrix);
 
         // We use an updated vector to redefine its velocity
         this.player.setLinearVelocity(forceVector);
