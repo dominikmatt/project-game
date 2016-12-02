@@ -64,7 +64,7 @@ class Player {
 
         var material = Physijs.createMaterial(
             new THREE.MeshBasicMaterial({
-                color: 0x888888
+                color: 0xff0000,
             }),
             0.8,
             0.3

@@ -1,6 +1,16 @@
 'use strict';
 
+/**
+ * Player Configuration.
+ */
 export const PLAYER = {
-    walkSpeed: 0.5,
-    runSpeed: 1
+    walkSpeed: 10,
+    runSpeed: 20
+};
+
+/**
+ * Debug settings.
+ */
+export const DEBUG = {
+    player: false
 };

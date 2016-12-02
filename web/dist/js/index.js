@@ -798,7 +798,7 @@ var Player = function () {
             console.debug('Generate Player…');
 
             var material = Physijs.createMaterial(new THREE.MeshBasicMaterial({
-                color: 0x888888
+                color: 0xff0000
             }), 0.8, 0.3);
             this.player = new Physijs.BoxMesh(new THREE.CubeGeometry(1, 1, 1), material);
 
@@ -898,6 +898,9 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+/**
+ * Control for Player.
+ */
 var PointerLockControls = function (_ControlsKeyMapper) {
     _inherits(PointerLockControls, _ControlsKeyMapper);
 
@@ -913,55 +916,112 @@ var PointerLockControls = function (_ControlsKeyMapper) {
         /*player.setLinearFactor(new THREE.Vector3(0,0,0));*/
         _this.player.setAngularFactor(new THREE.Vector3(0, 0, 0));
 
-        camera.position.set(0, 0, 0);
-        _this.player.add(camera);
+        if (_constants.DEBUG.player) {
+            // Debug Player player is visible from top.
+            camera.position.set(0, 30, 30);
+            camera.lookAt(_this.player.position);
+        } else {
+            camera.position.set(0, 0, 0);
+            _this.player.add(camera);
+        }
 
         _this.bindEvents();
         return _this;
     }
 
+    /**
+     * Rotate Player.
+     * TODO: Implement show up and down.
+     *
+     * @param deltaX
+     * @param deltaY
+     */
+
+
     _createClass(PointerLockControls, [{
-        key: 'getObject',
-        value: function getObject() {}
-    }, {
         key: 'rotate',
         value: function rotate(deltaX, deltaY) {
-            _Camera2.default.camera.rotation.y -= deltaX / 50;
-            _Camera2.default.camera.rotation.x -= deltaY / 50;
+            //this.player.rotation.x -= deltaY / 50;
+            this.player.rotation.y -= deltaX / 50;
         }
+
+        /**
+         * Called on W pressed.
+         */
+
     }, {
         key: 'forward',
         value: function forward() {
-            this.velocity.z = -_constants.PLAYER.walkSpeed;
+            this.velocity.x = -_constants.PLAYER.walkSpeed;
         }
+
+        /**
+         * Called on S pressed.
+         */
+
     }, {
         key: 'backward',
         value: function backward() {
-            this.velocity.z = _constants.PLAYER.walkSpeed;
+            this.velocity.x = _constants.PLAYER.walkSpeed;
         }
+
+        /**
+         * Called on A pressed.
+         */
+
     }, {
         key: 'left',
         value: function left() {
-            this.velocity.x = -_constants.PLAYER.walkSpeed;
+            this.velocity.y = _constants.PLAYER.walkSpeed;
         }
+
+        /**
+         * Called on D pressed.
+         */
+
     }, {
         key: 'right',
         value: function right() {
-            this.velocity.x = _constants.PLAYER.walkSpeed;
+            this.velocity.y = -_constants.PLAYER.walkSpeed;
         }
+
+        /**
+         * Walk over the terrain.
+         */
+
     }, {
         key: 'walk',
-        value: function walk(delta) {
-            console.debug(_Camera2.default.camera.quaternion.y);
-            var oldVector = this.player.getLinearVelocity(); // Vector of velocity the player already has
-            var playerVec3 = new THREE.Vector3(oldVector.x + 0.5 * this.velocity.x, oldVector.y, oldVector.z + 0.5 * this.velocity.z);
-            this.player.setLinearVelocity(playerVec3); // We use an updated vector to redefine its velocity
+        value: function walk() {
+            // !!!!!!!!!! Rotation and movement of Player is correct !!!!!!!!!!
+            // !!!!!!!!!! TODO: change x movement !!!!!!!!!
+
+            if (this.velocity.x === 0 && this.velocity.z === 0) {}
+            //return;
+
+
+            // Vector of velocity the player already has
+            var oldVector = this.player.getLinearVelocity();
+            // Remove players matrix from default matrix
+            var rotationMatrix = new THREE.Matrix4().extractRotation(this.player.matrix);
+            // Calculate velocity for the player by matrix and set the y to the old velocity
+            var forceVector = new THREE.Vector3(this.velocity.x, oldVector.y, this.velocity.z).applyMatrix4(rotationMatrix);
+
+            // We use an updated vector to redefine its velocity
+            this.player.setLinearVelocity(forceVector);
 
             this.velocity.set(0, 0, 0);
         }
+
+        /**
+         * Update player position.
+         *
+         * @param {Float} delta
+         */
+
     }, {
         key: 'update',
         value: function update(delta) {
+            _Camera2.default.camera.lookAt(this.player.position);
             this.player.__dirtyRotation = true;
             if (true === this.walkActions.forward) {
                 this.forward();
@@ -979,7 +1039,7 @@ var PointerLockControls = function (_ControlsKeyMapper) {
                 this.right();
             }
 
-            this.walk(delta);
+            this.walk();
         }
     }]);
 
@@ -1180,12 +1240,23 @@ exports.default = Scene.instance;
 },{}],11:[function(require,module,exports){
 'use strict';
 
+/**
+ * Player Configuration.
+ */
+
 Object.defineProperty(exports, "__esModule", {
-    value: true
+  value: true
 });
 var PLAYER = exports.PLAYER = {
-    walkSpeed: 0.5,
-    runSpeed: 1
+  walkSpeed: 10,
+  runSpeed: 20
+};
+
+/**
+ * Debug settings.
+ */
+var DEBUG = exports.DEBUG = {
+  player: false
 };
 
 },{}],12:[function(require,module,exports){
