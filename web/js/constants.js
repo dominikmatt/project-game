@@ -12,5 +12,6 @@ export const PLAYER = {
  * Debug settings.
  */
 export const DEBUG = {
-    player: false
+    player: false,
+    flatMap: false
 };
