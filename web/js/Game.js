@@ -53,6 +53,7 @@ class Game {
 
         camera.update(); // update camera
         scene.scene.simulate(); // update physics
+        player.update(delta);
 
         requestAnimationFrame( this.render.bind(this) );
         renderer.render(); // render map
