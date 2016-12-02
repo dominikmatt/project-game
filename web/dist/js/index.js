@@ -90,7 +90,7 @@ var Bootstrap = function () {
 
 exports.default = Bootstrap;
 
-},{"./Game.js":3,"./Map/Map.js":4,"./Renderer.js":8,"./Scene.js":9}],2:[function(require,module,exports){
+},{"./Game.js":3,"./Map/Map.js":4,"./Renderer.js":9,"./Scene.js":10}],2:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -135,8 +135,6 @@ var Camera = function () {
      * @private
      */
     this._camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-    this.camera.position.set(0, 30, 50);
   }
 
   /**
@@ -173,7 +171,7 @@ var Camera = function () {
 
 exports.default = Camera.instance;
 
-},{"./Scene.js":9}],3:[function(require,module,exports){
+},{"./Scene.js":10}],3:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -255,6 +253,7 @@ var Game = function () {
 
       _Camera2.default.update(); // update camera
       _Scene2.default.scene.simulate(); // update physics
+      _Player2.default.update(delta);
 
       requestAnimationFrame(this.render.bind(this));
       _Renderer2.default.render(); // render map
@@ -275,7 +274,7 @@ var Game = function () {
 
 exports.default = Game.instance;
 
-},{"./Camera.js":2,"./Player/Player.js":7,"./Renderer.js":8,"./Scene.js":9}],4:[function(require,module,exports){
+},{"./Camera.js":2,"./Player/Player.js":7,"./Renderer.js":9,"./Scene.js":10}],4:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -378,7 +377,6 @@ var Map = function () {
             ground.receiveShadow = true;
             ground.name = 'Ground';
 
-            _Camera2.default.camera.lookAt(ground.position);
             _Scene2.default.scene.add(ground);
 
             this.onMapLoaded.call(null);
@@ -409,7 +407,7 @@ var Map = function () {
 
 exports.default = Map.instance;
 
-},{"./../Camera.js":2,"./../Scene.js":9,"./TerrainGeometry.js":5}],5:[function(require,module,exports){
+},{"./../Camera.js":2,"./../Scene.js":10,"./TerrainGeometry.js":5}],5:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -583,6 +581,132 @@ exports.default = TerrainGeometry;
 },{}],6:[function(require,module,exports){
 'use strict';
 
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var _class = function () {
+    function _class() {
+        _classCallCheck(this, _class);
+
+        this.mouseDown = false;
+        this.mouseX = 0;
+        this.mouseY = 0;
+
+        this.walkActions = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false
+        };
+
+        this.bindEvents();
+    }
+
+    _createClass(_class, [{
+        key: 'bindEvents',
+        value: function bindEvents() {
+            window.addEventListener('keydown', this.onKeyDown.bind(this));
+            window.addEventListener('keyup', this.onKeyUp.bind(this));
+            window.addEventListener('mousemove', this.onMouseMove.bind(this));
+            window.addEventListener('mousedown', this.onMouseDown.bind(this));
+        }
+    }, {
+        key: 'onMouseDown',
+        value: function onMouseDown(event) {
+            event.preventDefault();
+
+            this.mouseDown = true;
+            this.mouseX = event.clientX;
+            this.mouseY = event.clientY;
+        }
+    }, {
+        key: 'onMouseMove',
+        value: function onMouseMove(event) {
+            if (!this.mouseDown) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var deltaX = event.clientX - this.mouseX;
+            var deltaY = event.clientY - this.mouseY;
+            this.mouseX = event.clientX;
+            this.mouseY = event.clientY;
+
+            this.rotate(deltaX, deltaY);
+        }
+    }, {
+        key: 'onKeyDown',
+        value: function onKeyDown(event) {
+            var methodName = 'on' + event.key.toUpperCase() + 'Down';
+            var handler = this[methodName];
+
+            if (handler) {
+                handler.call(this);
+            }
+        }
+    }, {
+        key: 'onKeyUp',
+        value: function onKeyUp(event) {
+            var methodName = 'on' + event.key.toUpperCase() + 'Up';
+            var handler = this[methodName];
+
+            if (handler) {
+                handler.call(this);
+            }
+        }
+    }, {
+        key: 'onWDown',
+        value: function onWDown() {
+            this.walkActions.forward = true;
+        }
+    }, {
+        key: 'onWUp',
+        value: function onWUp() {
+            this.walkActions.forward = false;
+        }
+    }, {
+        key: 'onSDown',
+        value: function onSDown() {
+            this.walkActions.backward = true;
+        }
+    }, {
+        key: 'onSUp',
+        value: function onSUp() {
+            this.walkActions.backward = false;
+        }
+    }, {
+        key: 'onADown',
+        value: function onADown() {
+            this.walkActions.left = true;
+        }
+    }, {
+        key: 'onAUp',
+        value: function onAUp() {
+            this.walkActions.left = false;
+        }
+    }, {
+        key: 'onDDown',
+        value: function onDDown() {
+            this.walkActions.right = true;
+        }
+    }, {
+        key: 'onDUp',
+        value: function onDUp() {
+            this.walkActions.right = false;
+        }
+    }]);
+
+    return _class;
+}();
+
+exports.default = _class;
+
 },{}],7:[function(require,module,exports){
 'use strict';
 
@@ -604,9 +728,9 @@ var _Map = require('./../Map/Map.js');
 
 var _Map2 = _interopRequireDefault(_Map);
 
-var _Controls = require('./Controls.js');
+var _PointerLockControls = require('./PointerLockControls.js');
 
-var _Controls2 = _interopRequireDefault(_Controls);
+var _PointerLockControls2 = _interopRequireDefault(_PointerLockControls);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -622,6 +746,8 @@ var singleton = Symbol();
  */
 var singletonEnforcer = Symbol();
 
+var time = Date.now();
+
 /**
  * @class Player
  */
@@ -631,6 +757,18 @@ var Player = function () {
         _classCallCheck(this, Player);
 
         if (enforcer != singletonEnforcer) throw "Cannot construct singleton Player";
+
+        /**
+         * @type {PointerLockControls}
+         */
+        this.controls = null;
+
+        /**
+         * @type {Physijs.BoxMesh}
+         *
+         * @private
+         */
+        this._player = null;
     }
 
     /**
@@ -647,6 +785,7 @@ var Player = function () {
          */
         value: function initialize() {
             this.appendPlayer();
+            this.initControls();
         }
 
         /**
@@ -661,18 +800,60 @@ var Player = function () {
             var material = Physijs.createMaterial(new THREE.MeshBasicMaterial({
                 color: 0x888888
             }), 0.8, 0.3);
-            var mesh = new Physijs.BoxMesh(new THREE.CubeGeometry(1, 1, 1), material);
+            this.player = new Physijs.BoxMesh(new THREE.CubeGeometry(1, 1, 1), material);
 
-            mesh.position.set(10, 10, 0);
-            mesh.setLinearVelocity(new THREE.Vector3(0, 0, 0));
-            mesh.setAngularVelocity(new THREE.Vector3(0, 0, 0));
-            mesh.name = 'player';
-            _Scene2.default.scene.add(mesh);
+            this.player.__dirtyRotation = true;
+            this.player.position.set(10, 10, 0);
+            this.player.setLinearVelocity(new THREE.Vector3(0, 0, 0));
+            this.player.setAngularVelocity(new THREE.Vector3(0, 0, 0));
+            this.player.name = 'player';
+            _Scene2.default.scene.add(this.player);
         }
+
+        /**
+         * Initialize PointerLockControls.
+         */
+
+    }, {
+        key: 'initControls',
+        value: function initControls() {
+            console.debug('initial');
+            this.controls = new _PointerLockControls2.default(_Camera2.default.camera, this.player);
+
+            //scene.scene.add( this.controls.getObject() );
+        }
+
+        /**
+         * Update loop for player.
+         *
+         * @param {Float} delta
+         */
+
     }, {
         key: 'update',
-        value: function update() {
+        value: function update(delta) {
             // update player
+            if (this.controls) {
+                this.controls.update(delta);
+            }
+        }
+
+        /**
+         * @returns {Physijs.BoxMesh}
+         */
+
+    }, {
+        key: 'player',
+        get: function get() {
+            return this._player;
+        }
+
+        /**
+         * @param {Physijs.BoxMesh} value
+         */
+        ,
+        set: function set(value) {
+            this._player = value;
         }
     }], [{
         key: 'instance',
@@ -690,7 +871,124 @@ var Player = function () {
 
 exports.default = Player.instance;
 
-},{"./../Camera.js":2,"./../Map/Map.js":4,"./../Scene.js":9,"./Controls.js":6}],8:[function(require,module,exports){
+},{"./../Camera.js":2,"./../Map/Map.js":4,"./../Scene.js":10,"./PointerLockControls.js":8}],8:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _ControlsKeyMapper2 = require('./ControlsKeyMapper.js');
+
+var _ControlsKeyMapper3 = _interopRequireDefault(_ControlsKeyMapper2);
+
+var _constants = require('./../constants.js');
+
+var _Camera = require('./../Camera.js');
+
+var _Camera2 = _interopRequireDefault(_Camera);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var PointerLockControls = function (_ControlsKeyMapper) {
+    _inherits(PointerLockControls, _ControlsKeyMapper);
+
+    function PointerLockControls(camera, player) {
+        _classCallCheck(this, PointerLockControls);
+
+        var _this = _possibleConstructorReturn(this, (PointerLockControls.__proto__ || Object.getPrototypeOf(PointerLockControls)).call(this));
+
+        _this.player = player;
+        _this.velocity = new THREE.Vector3(0, 0, 0);
+        _this.v0 = new THREE.Vector3(0, 0, 0);
+        _this.v1 = new THREE.Vector3(0, 0, 0);
+        /*player.setLinearFactor(new THREE.Vector3(0,0,0));*/
+        _this.player.setAngularFactor(new THREE.Vector3(0, 0, 0));
+
+        camera.position.set(0, 0, 0);
+        _this.player.add(camera);
+
+        _this.bindEvents();
+        return _this;
+    }
+
+    _createClass(PointerLockControls, [{
+        key: 'getObject',
+        value: function getObject() {}
+    }, {
+        key: 'rotate',
+        value: function rotate(deltaX, deltaY) {
+            _Camera2.default.camera.rotation.y -= deltaX / 50;
+            _Camera2.default.camera.rotation.x -= deltaY / 50;
+        }
+    }, {
+        key: 'forward',
+        value: function forward() {
+            this.velocity.z = -_constants.PLAYER.walkSpeed;
+        }
+    }, {
+        key: 'backward',
+        value: function backward() {
+            this.velocity.z = _constants.PLAYER.walkSpeed;
+        }
+    }, {
+        key: 'left',
+        value: function left() {
+            this.velocity.x = -_constants.PLAYER.walkSpeed;
+        }
+    }, {
+        key: 'right',
+        value: function right() {
+            this.velocity.x = _constants.PLAYER.walkSpeed;
+        }
+    }, {
+        key: 'walk',
+        value: function walk(delta) {
+            console.debug(_Camera2.default.camera.quaternion.y);
+            var oldVector = this.player.getLinearVelocity(); // Vector of velocity the player already has
+            var playerVec3 = new THREE.Vector3(oldVector.x + 0.5 * this.velocity.x, oldVector.y, oldVector.z + 0.5 * this.velocity.z);
+            this.player.setLinearVelocity(playerVec3); // We use an updated vector to redefine its velocity
+
+            this.velocity.set(0, 0, 0);
+        }
+    }, {
+        key: 'update',
+        value: function update(delta) {
+            this.player.__dirtyRotation = true;
+            if (true === this.walkActions.forward) {
+                this.forward();
+            }
+
+            if (true === this.walkActions.backward) {
+                this.backward();
+            }
+
+            if (true === this.walkActions.left) {
+                this.left();
+            }
+
+            if (true === this.walkActions.right) {
+                this.right();
+            }
+
+            this.walk(delta);
+        }
+    }]);
+
+    return PointerLockControls;
+}(_ControlsKeyMapper3.default);
+
+exports.default = PointerLockControls;
+
+},{"./../Camera.js":2,"./../constants.js":11,"./ControlsKeyMapper.js":6}],9:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -801,7 +1099,7 @@ var Renderer = function () {
 
 exports.default = Renderer.instance;
 
-},{"./Camera.js":2,"./Scene.js":9}],9:[function(require,module,exports){
+},{"./Camera.js":2,"./Scene.js":10}],10:[function(require,module,exports){
 'use strict';
 
 /**
@@ -879,7 +1177,18 @@ var Scene = function () {
 
 exports.default = Scene.instance;
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+var PLAYER = exports.PLAYER = {
+    walkSpeed: 0.5,
+    runSpeed: 1
+};
+
+},{}],12:[function(require,module,exports){
 'use strict';
 
 var _Bootstrap = require('./Bootstrap.js');
@@ -890,7 +1199,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var bootstrap = new _Bootstrap2.default();
 
-},{"./Bootstrap.js":1}]},{},[10])
+},{"./Bootstrap.js":1}]},{},[12])
 
 
 //# sourceMappingURL=index.js.map

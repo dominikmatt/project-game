@@ -1,4 +1,5 @@
 .*
 !.gitignore
 node_modules/
-web/example/Three.js-Demos-master
+web/example/
+*.bak.js

@@ -83,7 +83,6 @@ class Map {
         ground.receiveShadow = true;
         ground.name = 'Ground';
 
-        camera.camera.lookAt(ground.position);
         scene.scene.add( ground );
 
         this.onMapLoaded.call(null);
