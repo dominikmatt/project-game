@@ -65,7 +65,7 @@ export default class TerrainGeometry {
                 var all = heightData[index] + heightData[index + 1] + heightData[index + 2];
 
                 // set it to PlaneGeometry
-                groundGeometry.vertices[verticesIndex].z = all / (12 * 6);
+                groundGeometry.vertices[verticesIndex].z = all / (20 * 6);
                 verticesIndex++;
             }
         }

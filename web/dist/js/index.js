@@ -490,7 +490,7 @@ var TerrainGeometry = function () {
                     var all = heightData[index] + heightData[index + 1] + heightData[index + 2];
 
                     // set it to PlaneGeometry
-                    groundGeometry.vertices[verticesIndex].z = all / (12 * 6);
+                    groundGeometry.vertices[verticesIndex].z = all / (20 * 6);
                     verticesIndex++;
                 }
             }
@@ -806,7 +806,7 @@ var Player = function () {
 
             var material = Physijs.createMaterial(new THREE.MeshBasicMaterial({
                 color: 0xff0000
-            }), 0.8, 0.3);
+            }), 1, 0.3);
             this.player = new Physijs.BoxMesh(new THREE.CubeGeometry(1, 1, 1), material);
 
             this.player.__dirtyRotation = true;
@@ -948,8 +948,14 @@ var PointerLockControls = function (_ControlsKeyMapper) {
     _createClass(PointerLockControls, [{
         key: 'rotate',
         value: function rotate(deltaX, deltaY) {
-            //this.player.rotation.x -= deltaY / 50;
-            this.player.rotation.y -= deltaX / 50;
+            _Camera2.default.camera.rotation.x -= deltaY / _constants.PLAYER.lookSpeed;
+            this.player.rotation.y -= deltaX / _constants.PLAYER.lookSpeed;
+
+            if (_Camera2.default.camera.rotation.x < -0.26) {
+                _Camera2.default.camera.rotation.x = -0.26;
+            } else if (_Camera2.default.camera.rotation.x > 0.26) {
+                _Camera2.default.camera.rotation.x = 0.26;
+            }
         }
 
         /**
@@ -959,7 +965,7 @@ var PointerLockControls = function (_ControlsKeyMapper) {
     }, {
         key: 'forward',
         value: function forward() {
-            this.velocity.x = -_constants.PLAYER.walkSpeed;
+            this.velocity.z = -_constants.PLAYER.walkSpeed;
         }
 
         /**
@@ -969,7 +975,7 @@ var PointerLockControls = function (_ControlsKeyMapper) {
     }, {
         key: 'backward',
         value: function backward() {
-            this.velocity.x = _constants.PLAYER.walkSpeed;
+            this.velocity.z = _constants.PLAYER.walkSpeed;
         }
 
         /**
@@ -979,7 +985,7 @@ var PointerLockControls = function (_ControlsKeyMapper) {
     }, {
         key: 'left',
         value: function left() {
-            this.velocity.y = _constants.PLAYER.walkSpeed;
+            this.velocity.x = -_constants.PLAYER.walkSpeed;
         }
 
         /**
@@ -989,7 +995,7 @@ var PointerLockControls = function (_ControlsKeyMapper) {
     }, {
         key: 'right',
         value: function right() {
-            this.velocity.y = -_constants.PLAYER.walkSpeed;
+            this.velocity.x = _constants.PLAYER.walkSpeed;
         }
 
         /**
@@ -1024,7 +1030,6 @@ var PointerLockControls = function (_ControlsKeyMapper) {
     }, {
         key: 'update',
         value: function update(delta) {
-            _Camera2.default.camera.lookAt(this.player.position);
             this.player.__dirtyRotation = true;
             if (true === this.walkActions.forward) {
                 this.forward();
@@ -1251,9 +1256,15 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 var PLAYER = exports.PLAYER = {
-  walkSpeed: 10,
-  runSpeed: 20
+  walkSpeed: 1,
+  runSpeed: 2,
+  lookSpeed: 70 // mouse-delta / lookSpeed
 };
+
+/**
+ * Map config.
+ */
+var MAP = exports.MAP = {};
 
 /**
  * Debug settings.

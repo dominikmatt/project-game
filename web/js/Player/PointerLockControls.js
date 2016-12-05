@@ -1,9 +1,8 @@
 'use strict';
 
 import ControlsKeyMapper from './ControlsKeyMapper.js';
-import { PLAYER } from './../constants.js';
+import { PLAYER, DEBUG } from './../constants.js';
 import camera from './../Camera.js';
-import { DEBUG } from './../constants.js';
 
 /**
  * Control for Player.
@@ -39,37 +38,42 @@ export default class PointerLockControls extends ControlsKeyMapper {
      * @param deltaY
      */
     rotate(deltaX, deltaY) {
-        //this.player.rotation.x -= deltaY / 50;
-        this.player.rotation.y -= deltaX / 50;
+        camera.camera.rotation.x -= deltaY / PLAYER.lookSpeed;
+        this.player.rotation.y -= deltaX / PLAYER.lookSpeed;
 
+        if (camera.camera.rotation.x < -0.26) {
+            camera.camera.rotation.x = -0.26;
+        } else if (camera.camera.rotation.x > 0.26) {
+            camera.camera.rotation.x = 0.26;
+        }
     }
 
     /**
      * Called on W pressed.
      */
     forward() {
-        this.velocity.x = -(PLAYER.walkSpeed);
+        this.velocity.z = -(PLAYER.walkSpeed);
     }
 
     /**
      * Called on S pressed.
      */
     backward() {
-        this.velocity.x = PLAYER.walkSpeed;
+        this.velocity.z = PLAYER.walkSpeed;
     }
 
     /**
      * Called on A pressed.
      */
     left() {
-        this.velocity.y = PLAYER.walkSpeed;
+        this.velocity.x = -(PLAYER.walkSpeed);
     }
 
     /**
      * Called on D pressed.
      */
     right() {
-        this.velocity.y = -(PLAYER.walkSpeed);
+        this.velocity.x = PLAYER.walkSpeed;
     }
 
     /**
@@ -104,7 +108,6 @@ export default class PointerLockControls extends ControlsKeyMapper {
      * @param {Float} delta
      */
     update(delta) {
-        camera.camera.lookAt(this.player.position);
         this.player.__dirtyRotation = true;
         if (true === this.walkActions.forward) {
             this.forward();

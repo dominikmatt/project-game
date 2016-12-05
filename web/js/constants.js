@@ -4,8 +4,15 @@
  * Player Configuration.
  */
 export const PLAYER = {
-    walkSpeed: 10,
-    runSpeed: 20
+    walkSpeed: 1,
+    runSpeed: 2,
+    lookSpeed: 70 // mouse-delta / lookSpeed
+};
+
+/**
+ * Map config.
+ */
+export const MAP = {
 };
 
 /**
