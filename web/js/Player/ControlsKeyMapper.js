@@ -47,7 +47,8 @@ export default class {
     }
 
     onKeyDown(event) {
-        const methodName = `on${event.key.toUpperCase()}Down`;
+        console.log(event);
+        const methodName = `on${event.code}Down`;
         const handler = this[methodName];
 
         if (handler) {
@@ -56,7 +57,7 @@ export default class {
     }
 
     onKeyUp(event) {
-        const methodName = `on${event.key.toUpperCase()}Up`;
+        const methodName = `on${event.code}Up`;
         const handler = this[methodName];
 
         if (handler) {
@@ -64,35 +65,35 @@ export default class {
         }
     }
 
-    onWDown() {
+    onKeyWDown() {
         this.walkActions.forward = true;
     }
 
-    onWUp() {
+    onKeyWUp() {
         this.walkActions.forward = false;
     }
 
-    onSDown() {
+    onKeySDown() {
         this.walkActions.backward = true;
     }
 
-    onSUp() {
+    onKeySUp() {
         this.walkActions.backward = false;
     }
 
-    onADown() {
+    onKeyADown() {
         this.walkActions.left = true;
     }
 
-    onAUp() {
+    onKeyAUp() {
         this.walkActions.left = false;
     }
 
-    onDDown() {
+    onKeyDDown() {
         this.walkActions.right = true;
     }
 
-    onDUp() {
+    onKeyDUp() {
         this.walkActions.right = false;
     }
 

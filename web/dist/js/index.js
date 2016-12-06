@@ -650,7 +650,8 @@ var _class = function () {
     }, {
         key: 'onKeyDown',
         value: function onKeyDown(event) {
-            var methodName = 'on' + event.key.toUpperCase() + 'Down';
+            console.log(event);
+            var methodName = 'on' + event.code + 'Down';
             var handler = this[methodName];
 
             if (handler) {
@@ -660,7 +661,7 @@ var _class = function () {
     }, {
         key: 'onKeyUp',
         value: function onKeyUp(event) {
-            var methodName = 'on' + event.key.toUpperCase() + 'Up';
+            var methodName = 'on' + event.code + 'Up';
             var handler = this[methodName];
 
             if (handler) {
@@ -668,43 +669,43 @@ var _class = function () {
             }
         }
     }, {
-        key: 'onWDown',
-        value: function onWDown() {
+        key: 'onKeyWDown',
+        value: function onKeyWDown() {
             this.walkActions.forward = true;
         }
     }, {
-        key: 'onWUp',
-        value: function onWUp() {
+        key: 'onKeyWUp',
+        value: function onKeyWUp() {
             this.walkActions.forward = false;
         }
     }, {
-        key: 'onSDown',
-        value: function onSDown() {
+        key: 'onKeySDown',
+        value: function onKeySDown() {
             this.walkActions.backward = true;
         }
     }, {
-        key: 'onSUp',
-        value: function onSUp() {
+        key: 'onKeySUp',
+        value: function onKeySUp() {
             this.walkActions.backward = false;
         }
     }, {
-        key: 'onADown',
-        value: function onADown() {
+        key: 'onKeyADown',
+        value: function onKeyADown() {
             this.walkActions.left = true;
         }
     }, {
-        key: 'onAUp',
-        value: function onAUp() {
+        key: 'onKeyAUp',
+        value: function onKeyAUp() {
             this.walkActions.left = false;
         }
     }, {
-        key: 'onDDown',
-        value: function onDDown() {
+        key: 'onKeyDDown',
+        value: function onKeyDDown() {
             this.walkActions.right = true;
         }
     }, {
-        key: 'onDUp',
-        value: function onDUp() {
+        key: 'onKeyDUp',
+        value: function onKeyDUp() {
             this.walkActions.right = false;
         }
     }]);
