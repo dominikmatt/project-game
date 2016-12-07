@@ -1,6 +1,7 @@
 'use strict';
 
 import { DEBUG } from './../constants.js';
+import WorkerManagerService from './../Services/WorkerManagerService.js';
 
 /**
  * Creates TerrainGeometry.
@@ -30,6 +31,11 @@ export default class TerrainGeometry {
          */
         this._mapLength = 0;
 
+        /**
+         * @type {WorkerClass}
+         */
+        this.mapWorker = WorkerManagerService.getWorker('map');
+
         return this.promise;
     }
 
@@ -57,25 +63,24 @@ export default class TerrainGeometry {
     onTerrainHeightmapLoaded(resolve, reject) {
         let heightData = this.getHeightImageData().data;
         let groundGeometry = new THREE.PlaneGeometry( this.mapWidth, this.mapLength, this.mapWidth - 1, this.mapLength - 1 );
-        let verticesIndex = 0;
 
-        // Calculate Vertice height.
-        if (!DEBUG.flatMap) {
-            for (var index = 0; index < heightData.length; index += (4)) {
-                var all = heightData[index] + heightData[index + 1] + heightData[index + 2];
+        this.mapWorker
+            .post({
+                vertices: groundGeometry.vertices,
+                heightData: heightData
+            })
+            .then((event) => {
+                if (!DEBUG.flatMap) {
+                    groundGeometry.vertices = event.vertices;
+                }
 
-                // set it to PlaneGeometry
-                groundGeometry.vertices[verticesIndex].z = all / (20 * 6);
-                verticesIndex++;
-            }
-        }
+                groundGeometry.computeFaceNormals();
+                groundGeometry.computeVertexNormals();
 
-        groundGeometry.computeFaceNormals();
-        groundGeometry.computeVertexNormals();
+                this.groundGeometry = groundGeometry;
 
-        this.groundGeometry = groundGeometry;
-
-        resolve();
+                resolve();
+            });
     }
 
     /**

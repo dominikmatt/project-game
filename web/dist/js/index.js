@@ -1,4 +1,347 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var root = require('./_root');
+
+/** Built-in value references. */
+var Symbol = root.Symbol;
+
+module.exports = Symbol;
+
+},{"./_root":8}],2:[function(require,module,exports){
+/**
+ * A specialized version of `_.map` for arrays without support for iteratee
+ * shorthands.
+ *
+ * @private
+ * @param {Array} [array] The array to iterate over.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Array} Returns the new mapped array.
+ */
+function arrayMap(array, iteratee) {
+  var index = -1,
+      length = array == null ? 0 : array.length,
+      result = Array(length);
+
+  while (++index < length) {
+    result[index] = iteratee(array[index], index, array);
+  }
+  return result;
+}
+
+module.exports = arrayMap;
+
+},{}],3:[function(require,module,exports){
+var Symbol = require('./_Symbol'),
+    getRawTag = require('./_getRawTag'),
+    objectToString = require('./_objectToString');
+
+/** `Object#toString` result references. */
+var nullTag = '[object Null]',
+    undefinedTag = '[object Undefined]';
+
+/** Built-in value references. */
+var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * The base implementation of `getTag` without fallbacks for buggy environments.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the `toStringTag`.
+ */
+function baseGetTag(value) {
+  if (value == null) {
+    return value === undefined ? undefinedTag : nullTag;
+  }
+  value = Object(value);
+  return (symToStringTag && symToStringTag in value)
+    ? getRawTag(value)
+    : objectToString(value);
+}
+
+module.exports = baseGetTag;
+
+},{"./_Symbol":1,"./_getRawTag":6,"./_objectToString":7}],4:[function(require,module,exports){
+var Symbol = require('./_Symbol'),
+    arrayMap = require('./_arrayMap'),
+    isArray = require('./isArray'),
+    isSymbol = require('./isSymbol');
+
+/** Used as references for various `Number` constants. */
+var INFINITY = 1 / 0;
+
+/** Used to convert symbols to primitives and strings. */
+var symbolProto = Symbol ? Symbol.prototype : undefined,
+    symbolToString = symbolProto ? symbolProto.toString : undefined;
+
+/**
+ * The base implementation of `_.toString` which doesn't convert nullish
+ * values to empty strings.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {string} Returns the string.
+ */
+function baseToString(value) {
+  // Exit early for strings to avoid a performance hit in some environments.
+  if (typeof value == 'string') {
+    return value;
+  }
+  if (isArray(value)) {
+    // Recursively convert values (susceptible to call stack limits).
+    return arrayMap(value, baseToString) + '';
+  }
+  if (isSymbol(value)) {
+    return symbolToString ? symbolToString.call(value) : '';
+  }
+  var result = (value + '');
+  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
+}
+
+module.exports = baseToString;
+
+},{"./_Symbol":1,"./_arrayMap":2,"./isArray":9,"./isSymbol":11}],5:[function(require,module,exports){
+(function (global){
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+module.exports = freeGlobal;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+
+},{}],6:[function(require,module,exports){
+var Symbol = require('./_Symbol');
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/** Built-in value references. */
+var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the raw `toStringTag`.
+ */
+function getRawTag(value) {
+  var isOwn = hasOwnProperty.call(value, symToStringTag),
+      tag = value[symToStringTag];
+
+  try {
+    value[symToStringTag] = undefined;
+    var unmasked = true;
+  } catch (e) {}
+
+  var result = nativeObjectToString.call(value);
+  if (unmasked) {
+    if (isOwn) {
+      value[symToStringTag] = tag;
+    } else {
+      delete value[symToStringTag];
+    }
+  }
+  return result;
+}
+
+module.exports = getRawTag;
+
+},{"./_Symbol":1}],7:[function(require,module,exports){
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/**
+ * Converts `value` to a string using `Object.prototype.toString`.
+ *
+ * @private
+ * @param {*} value The value to convert.
+ * @returns {string} Returns the converted string.
+ */
+function objectToString(value) {
+  return nativeObjectToString.call(value);
+}
+
+module.exports = objectToString;
+
+},{}],8:[function(require,module,exports){
+var freeGlobal = require('./_freeGlobal');
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+module.exports = root;
+
+},{"./_freeGlobal":5}],9:[function(require,module,exports){
+/**
+ * Checks if `value` is classified as an `Array` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an array, else `false`.
+ * @example
+ *
+ * _.isArray([1, 2, 3]);
+ * // => true
+ *
+ * _.isArray(document.body.children);
+ * // => false
+ *
+ * _.isArray('abc');
+ * // => false
+ *
+ * _.isArray(_.noop);
+ * // => false
+ */
+var isArray = Array.isArray;
+
+module.exports = isArray;
+
+},{}],10:[function(require,module,exports){
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return value != null && typeof value == 'object';
+}
+
+module.exports = isObjectLike;
+
+},{}],11:[function(require,module,exports){
+var baseGetTag = require('./_baseGetTag'),
+    isObjectLike = require('./isObjectLike');
+
+/** `Object#toString` result references. */
+var symbolTag = '[object Symbol]';
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && baseGetTag(value) == symbolTag);
+}
+
+module.exports = isSymbol;
+
+},{"./_baseGetTag":3,"./isObjectLike":10}],12:[function(require,module,exports){
+var baseToString = require('./_baseToString');
+
+/**
+ * Converts `value` to a string. An empty string is returned for `null`
+ * and `undefined` values. The sign of `-0` is preserved.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to convert.
+ * @returns {string} Returns the converted string.
+ * @example
+ *
+ * _.toString(null);
+ * // => ''
+ *
+ * _.toString(-0);
+ * // => '-0'
+ *
+ * _.toString([1, 2, 3]);
+ * // => '1,2,3'
+ */
+function toString(value) {
+  return value == null ? '' : baseToString(value);
+}
+
+module.exports = toString;
+
+},{"./_baseToString":4}],13:[function(require,module,exports){
+var toString = require('./toString');
+
+/** Used to generate unique IDs. */
+var idCounter = 0;
+
+/**
+ * Generates a unique ID. If `prefix` is given, the ID is appended to it.
+ *
+ * @static
+ * @since 0.1.0
+ * @memberOf _
+ * @category Util
+ * @param {string} [prefix=''] The value to prefix the ID with.
+ * @returns {string} Returns the unique ID.
+ * @example
+ *
+ * _.uniqueId('contact_');
+ * // => 'contact_104'
+ *
+ * _.uniqueId();
+ * // => '105'
+ */
+function uniqueId(prefix) {
+  var id = ++idCounter;
+  return toString(prefix) + id;
+}
+
+module.exports = uniqueId;
+
+},{"./toString":12}],14:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -90,7 +433,7 @@ var Bootstrap = function () {
 
 exports.default = Bootstrap;
 
-},{"./Game.js":3,"./Map/Map.js":4,"./Renderer.js":9,"./Scene.js":10}],2:[function(require,module,exports){
+},{"./Game.js":16,"./Map/Map.js":17,"./Renderer.js":23,"./Scene.js":24}],15:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -171,7 +514,7 @@ var Camera = function () {
 
 exports.default = Camera.instance;
 
-},{"./Scene.js":10}],3:[function(require,module,exports){
+},{"./Scene.js":24}],16:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -274,7 +617,7 @@ var Game = function () {
 
 exports.default = Game.instance;
 
-},{"./Camera.js":2,"./Player/Player.js":7,"./Renderer.js":9,"./Scene.js":10}],4:[function(require,module,exports){
+},{"./Camera.js":15,"./Player/Player.js":21,"./Renderer.js":23,"./Scene.js":24}],17:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -407,7 +750,7 @@ var Map = function () {
 
 exports.default = Map.instance;
 
-},{"./../Camera.js":2,"./../Scene.js":10,"./TerrainGeometry.js":5}],5:[function(require,module,exports){
+},{"./../Camera.js":15,"./../Scene.js":24,"./TerrainGeometry.js":18}],18:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -417,6 +760,12 @@ Object.defineProperty(exports, "__esModule", {
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _constants = require('./../constants.js');
+
+var _WorkerManagerService = require('./../Services/WorkerManagerService.js');
+
+var _WorkerManagerService2 = _interopRequireDefault(_WorkerManagerService);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -450,6 +799,11 @@ var TerrainGeometry = function () {
          */
         this._mapLength = 0;
 
+        /**
+         * @type {WorkerClass}
+         */
+        this.mapWorker = _WorkerManagerService2.default.getWorker('map');
+
         return this.promise;
     }
 
@@ -480,27 +834,26 @@ var TerrainGeometry = function () {
     }, {
         key: 'onTerrainHeightmapLoaded',
         value: function onTerrainHeightmapLoaded(resolve, reject) {
+            var _this2 = this;
+
             var heightData = this.getHeightImageData().data;
             var groundGeometry = new THREE.PlaneGeometry(this.mapWidth, this.mapLength, this.mapWidth - 1, this.mapLength - 1);
-            var verticesIndex = 0;
 
-            // Calculate Vertice height.
-            if (!_constants.DEBUG.flatMap) {
-                for (var index = 0; index < heightData.length; index += 4) {
-                    var all = heightData[index] + heightData[index + 1] + heightData[index + 2];
-
-                    // set it to PlaneGeometry
-                    groundGeometry.vertices[verticesIndex].z = all / (20 * 6);
-                    verticesIndex++;
+            this.mapWorker.post({
+                vertices: groundGeometry.vertices,
+                heightData: heightData
+            }).then(function (event) {
+                if (!_constants.DEBUG.flatMap) {
+                    groundGeometry.vertices = event.vertices;
                 }
-            }
 
-            groundGeometry.computeFaceNormals();
-            groundGeometry.computeVertexNormals();
+                groundGeometry.computeFaceNormals();
+                groundGeometry.computeVertexNormals();
 
-            this.groundGeometry = groundGeometry;
+                _this2.groundGeometry = groundGeometry;
 
-            resolve();
+                resolve();
+            });
         }
 
         /**
@@ -585,7 +938,162 @@ var TerrainGeometry = function () {
 
 exports.default = TerrainGeometry;
 
-},{"./../constants.js":11}],6:[function(require,module,exports){
+},{"./../Services/WorkerManagerService.js":25,"./../constants.js":26}],19:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _uniqueId = require('lodash/uniqueId');
+
+var _uniqueId2 = _interopRequireDefault(_uniqueId);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var ONE_TYPE = 'one';
+var ON_TYPE = 'on';
+
+/**
+ * Register a new Worker.
+ */
+
+var WorkerClass = function () {
+    function WorkerClass(key, options) {
+        _classCallCheck(this, WorkerClass);
+
+        /**
+         * @type {String}
+         */
+        this.key = key;
+
+        /**
+         * @type {String}
+         */
+        this.fileName = options.fileName || '{this.key}.js';
+
+        /**
+         * @type {String}
+         */
+        this.url = '/dist/worker/' + this.fileName;
+
+        /**
+         * @type {Array}
+         */
+        this.handler = [];
+
+        /**
+         * @type {Worker}
+         */
+        this.worker = new Worker(this.url);
+
+        this.messageHandler();
+    }
+
+    /**
+     * Listen for message and call registerd callbacks.
+     */
+
+
+    _createClass(WorkerClass, [{
+        key: 'messageHandler',
+        value: function messageHandler() {
+            var _this = this;
+
+            this.worker.addEventListener('message', function (event) {
+                var eventKey = event.data.eventKey;
+
+                _this.handler[eventKey].forEach(function (data, key) {
+                    // Remove event handler if bin it only once.
+                    if (ONE_TYPE === data.type) {
+                        delete _this.handler[eventKey][key];
+                    }
+
+                    data.cb.call(null, event.data.data);
+                });
+            });
+        }
+
+        /**
+         * Will remove listener after first call.
+         *
+         * @param {String} eventName
+         * @param {Function} cb
+         */
+
+    }, {
+        key: 'one',
+        value: function one(eventName, cb) {
+            this.listen(eventName, cb, ONE_TYPE);
+        }
+
+        /**
+         * Register a allway open event listener.
+         *
+         * @param {String} eventName
+         * @param {Function} cb
+         */
+
+    }, {
+        key: 'on',
+        value: function on(eventName, cb) {
+            this.listen(eventName, cb, ON_TYPE);
+        }
+
+        /**
+         * Register event listener.
+         * @param eventName
+         * @param cb
+         * @param type
+         */
+
+    }, {
+        key: 'listen',
+        value: function listen(eventName, cb, type) {
+            if (!this.handler[eventName]) {
+                this.handler[eventName] = [];
+            }
+
+            this.handler[eventName].push({
+                cb: cb,
+                type: type
+            });
+        }
+
+        /**
+         *
+         * @param args
+         * @returns {Promise}
+         */
+
+    }, {
+        key: 'post',
+        value: function post() {
+            var _this2 = this;
+
+            for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+                args[_key] = arguments[_key];
+            }
+
+            return new Promise(function (resolve) {
+                var eventKey = (0, _uniqueId2.default)(_this2.key);
+                _this2.worker.postMessage([eventKey].concat(args));
+
+                _this2.one(eventKey, resolve);
+            });
+        }
+    }]);
+
+    return WorkerClass;
+}();
+
+exports.default = WorkerClass;
+
+},{"lodash/uniqueId":13}],20:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -650,7 +1158,6 @@ var _class = function () {
     }, {
         key: 'onKeyDown',
         value: function onKeyDown(event) {
-            console.log(event);
             var methodName = 'on' + event.code + 'Down';
             var handler = this[methodName];
 
@@ -715,7 +1222,7 @@ var _class = function () {
 
 exports.default = _class;
 
-},{}],7:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -825,10 +1332,7 @@ var Player = function () {
     }, {
         key: 'initControls',
         value: function initControls() {
-            console.debug('initial');
             this.controls = new _PointerLockControls2.default(_Camera2.default.camera, this.player);
-
-            //scene.scene.add( this.controls.getObject() );
         }
 
         /**
@@ -879,7 +1383,7 @@ var Player = function () {
 
 exports.default = Player.instance;
 
-},{"./../Camera.js":2,"./../Map/Map.js":4,"./../Scene.js":10,"./PointerLockControls.js":8}],8:[function(require,module,exports){
+},{"./../Camera.js":15,"./../Map/Map.js":17,"./../Scene.js":24,"./PointerLockControls.js":22}],22:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1057,7 +1561,7 @@ var PointerLockControls = function (_ControlsKeyMapper) {
 
 exports.default = PointerLockControls;
 
-},{"./../Camera.js":2,"./../constants.js":11,"./ControlsKeyMapper.js":6}],9:[function(require,module,exports){
+},{"./../Camera.js":15,"./../constants.js":26,"./ControlsKeyMapper.js":20}],23:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -1168,7 +1672,7 @@ var Renderer = function () {
 
 exports.default = Renderer.instance;
 
-},{"./Camera.js":2,"./Scene.js":10}],10:[function(require,module,exports){
+},{"./Camera.js":15,"./Scene.js":24}],24:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1246,7 +1750,89 @@ var Scene = function () {
 
 exports.default = Scene.instance;
 
-},{}],11:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _WorkerClass = require('./../Modules/WorkerClass.js');
+
+var _WorkerClass2 = _interopRequireDefault(_WorkerClass);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/**
+ * @type {Symbol}
+ */
+var singleton = Symbol();
+
+/**
+ * @type {Symbol}
+ */
+var singletonEnforcer = Symbol();
+
+/**
+ * @class WorkerManagerService
+ */
+
+var WorkerManagerService = function () {
+    function WorkerManagerService(enforcer) {
+        _classCallCheck(this, WorkerManagerService);
+
+        if (enforcer != singletonEnforcer) throw 'Cannot construct singleton WorkerManagerService';
+
+        this.worker = {};
+    }
+
+    /**
+     * @returns {WorkerManagerService}
+     */
+
+
+    _createClass(WorkerManagerService, [{
+        key: 'getWorker',
+
+
+        /**
+         * Returns worker instance.
+         *
+         * @param {String} key
+         *
+         * @returns {WorkerClass}
+         */
+        value: function getWorker(key) {
+            if (!this.worker[key]) {
+
+                this.worker[key] = new _WorkerClass2.default(key, {
+                    fileName: key + '.js'
+                });
+            }
+
+            return this.worker[key];
+        }
+    }], [{
+        key: 'instance',
+        get: function get() {
+            if (!this[singleton]) {
+                this[singleton] = new WorkerManagerService(singletonEnforcer);
+            }
+
+            return this[singleton];
+        }
+    }]);
+
+    return WorkerManagerService;
+}();
+
+exports.default = WorkerManagerService.instance;
+
+},{"./../Modules/WorkerClass.js":19}],26:[function(require,module,exports){
 'use strict';
 
 /**
@@ -1275,7 +1861,7 @@ var DEBUG = exports.DEBUG = {
   flatMap: false
 };
 
-},{}],12:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 'use strict';
 
 var _Bootstrap = require('./Bootstrap.js');
@@ -1286,7 +1872,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var bootstrap = new _Bootstrap2.default();
 
-},{"./Bootstrap.js":1}]},{},[12])
+},{"./Bootstrap.js":14}]},{},[27])
 
 
 //# sourceMappingURL=index.js.map

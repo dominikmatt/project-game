@@ -47,7 +47,6 @@ export default class {
     }
 
     onKeyDown(event) {
-        console.log(event);
         const methodName = `on${event.code}Down`;
         const handler = this[methodName];
 
