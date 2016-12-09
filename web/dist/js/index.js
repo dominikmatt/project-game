@@ -650,7 +650,6 @@ var _class = function () {
     }, {
         key: 'onKeyDown',
         value: function onKeyDown(event) {
-            console.log(event);
             var methodName = 'on' + event.code + 'Down';
             var handler = this[methodName];
 
