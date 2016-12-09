@@ -1096,6 +1096,10 @@ exports.default = WorkerClass;
 },{"lodash/uniqueId":13}],20:[function(require,module,exports){
 'use strict';
 
+/**
+ * Handles key pressed an mouse move events.
+ */
+
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
@@ -1108,10 +1112,25 @@ var _class = function () {
     function _class() {
         _classCallCheck(this, _class);
 
+        /**
+         * @type {boolean}
+         */
         this.mouseDown = false;
+
+        /**
+         * @type {number}
+         */
         this.mouseX = 0;
+
+        /**
+         *
+         * @type {number}
+         */
         this.mouseY = 0;
 
+        /**
+         * @type {{forward: boolean, backward: boolean, left: boolean, right: boolean}}
+         */
         this.walkActions = {
             forward: false,
             backward: false,
@@ -1122,6 +1141,11 @@ var _class = function () {
         this.bindEvents();
     }
 
+    /**
+     * Bind all DOM-Events.
+     */
+
+
     _createClass(_class, [{
         key: 'bindEvents',
         value: function bindEvents() {
@@ -1130,6 +1154,13 @@ var _class = function () {
             window.addEventListener('mousemove', this.onMouseMove.bind(this));
             window.addEventListener('mousedown', this.onMouseDown.bind(this));
         }
+
+        /**
+         * Handle mouse down event.
+         *
+         * @param {MouseEvent} event
+         */
+
     }, {
         key: 'onMouseDown',
         value: function onMouseDown(event) {
@@ -1139,6 +1170,13 @@ var _class = function () {
             this.mouseX = event.clientX;
             this.mouseY = event.clientY;
         }
+
+        /**
+         * Handle Mouse move event.
+         *
+         * @param {MouseEvent} event
+         */
+
     }, {
         key: 'onMouseMove',
         value: function onMouseMove(event) {
@@ -1155,6 +1193,13 @@ var _class = function () {
 
             this.rotate(deltaX, deltaY);
         }
+
+        /**
+         * Handle keydown event.
+         *
+         * @param {KeyboardEvent} event
+         */
+
     }, {
         key: 'onKeyDown',
         value: function onKeyDown(event) {
@@ -1165,6 +1210,13 @@ var _class = function () {
                 handler.call(this);
             }
         }
+
+        /**
+         * Handle keydup event.
+         *
+         * @param {KeyboardEvent} event
+         */
+
     }, {
         key: 'onKeyUp',
         value: function onKeyUp(event) {
@@ -1175,41 +1227,81 @@ var _class = function () {
                 handler.call(this);
             }
         }
+
+        /**
+         * Forward start. (W)
+         */
+
     }, {
         key: 'onKeyWDown',
         value: function onKeyWDown() {
             this.walkActions.forward = true;
         }
+
+        /**
+         * Forward end. (W)
+         */
+
     }, {
         key: 'onKeyWUp',
         value: function onKeyWUp() {
             this.walkActions.forward = false;
         }
+
+        /**
+         * Backward Start. (S)
+         */
+
     }, {
         key: 'onKeySDown',
         value: function onKeySDown() {
             this.walkActions.backward = true;
         }
+
+        /**
+         * Backward stop. (S)
+         */
+
     }, {
         key: 'onKeySUp',
         value: function onKeySUp() {
             this.walkActions.backward = false;
         }
+
+        /**
+         * Left start. (A)
+         */
+
     }, {
         key: 'onKeyADown',
         value: function onKeyADown() {
             this.walkActions.left = true;
         }
+
+        /**
+         * Left end. (A)
+         */
+
     }, {
         key: 'onKeyAUp',
         value: function onKeyAUp() {
             this.walkActions.left = false;
         }
+
+        /**
+         * Right start. (D)
+         */
+
     }, {
         key: 'onKeyDDown',
         value: function onKeyDDown() {
             this.walkActions.right = true;
         }
+
+        /**
+         * Right end. (D)
+         */
+
     }, {
         key: 'onKeyDUp',
         value: function onKeyDUp() {
