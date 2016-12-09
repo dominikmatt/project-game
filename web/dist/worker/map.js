@@ -1,3 +1,7 @@
+'use strict';
+
+const heightFactor = 120;
+
 /**
  * Calculate heightData.
  */
@@ -6,10 +10,10 @@ self.addEventListener('message', function(e) {
     let verticesIndex = 0;
 
     // Calculate z from colorData.
-    for (var index = 0; index < options.heightData.length; index += (4)) {
+    for (var index = 0; index < options.heightData.length; index += 4) {
         var all = options.heightData[index] + options.heightData[index + 1] + options.heightData[index + 2];
 
-        options.vertices[verticesIndex].z = all / (20 * 6);
+        options.vertices[verticesIndex].z = all / (heightFactor);
         verticesIndex++;
     }
 
