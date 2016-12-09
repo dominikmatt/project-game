@@ -86,10 +86,7 @@ class Player {
      * Initialize PointerLockControls.
      */
     initControls() {
-        console.debug('initial');
         this.controls = new PointerLockControls( camera.camera , this.player);
-
-        //scene.scene.add( this.controls.getObject() );
     }
 
     /**

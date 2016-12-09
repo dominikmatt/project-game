@@ -4,6 +4,7 @@ var source = require('vinyl-source-stream');
 var buffer = require('vinyl-buffer');
 var browserify = require('browserify');
 var watchify = require('watchify');
+var gulpCopy = require('gulp-copy');
 
 function compile(watch) {
     var bundler = watchify(
@@ -33,7 +34,13 @@ function compile(watch) {
     rebundle();
 }
 
+function copyWorker() {
+    return gulp.src(['./web/js/worker/*'])
+        .pipe(gulp.dest('./web/dist/worker'));
+};
+
 function watch() {
+    gulp.watch('./web/js/worker/*.js', copyWorker);
     return compile(true);
 }
 
