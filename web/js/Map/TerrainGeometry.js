@@ -1,5 +1,10 @@
 'use strict';
 
+import { DEBUG } from './../constants.js';
+
+/**
+ * Creates TerrainGeometry.
+ */
 export default class TerrainGeometry {
     constructor(config) {
         /**
@@ -55,12 +60,14 @@ export default class TerrainGeometry {
         let verticesIndex = 0;
 
         // Calculate Vertice height.
-        for ( var index = 0; index < heightData.length; index += (4) ) {
-            var all = heightData[index]+heightData[index+1]+heightData[index+2];
+        if (!DEBUG.flatMap) {
+            for (var index = 0; index < heightData.length; index += (4)) {
+                var all = heightData[index] + heightData[index + 1] + heightData[index + 2];
 
-            // set it to PlaneGeometry
-            groundGeometry.vertices[verticesIndex].z = all/(12*6);
-            verticesIndex++;
+                // set it to PlaneGeometry
+                groundGeometry.vertices[verticesIndex].z = all / (20 * 6);
+                verticesIndex++;
+            }
         }
 
         groundGeometry.computeFaceNormals();
