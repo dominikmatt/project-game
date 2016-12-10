@@ -15,14 +15,20 @@ module.exports = class AppWebspace {
         this.startServer();
     }
 
+    /**
+     * Start Webserver.
+     */
     startServer() {
         this.app = express();
 
-        this.setServerConfig();
+        this.setup();
         this.app.listen(configService.config.appPort);
     }
 
-    setServerConfig() {
+    /**
+     * Setup Websserver.
+     */
+    setup() {
         this.app.set('view engine', 'ejs');
     }
 };

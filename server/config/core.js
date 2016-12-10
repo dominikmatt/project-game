@@ -53,12 +53,15 @@ class Core {
      * Start all Webspaces.
      */
     startWebspaces() {
-        this._wsApp = new WebSocketWebspace();
-        this._app = new AppWebspace();
+        this.wsApp = new WebSocketWebspace();
+        this.app = new AppWebspace();
 
         this.loadRoutes();
     }
 
+    /**
+     * Load all route files from /routes Folder.
+     */
     loadRoutes() {
         const loadRouteFile = (file) => {
             require(`${routesPath}/${file}`).initialize(this.app, this.wsApp);
@@ -69,18 +72,30 @@ class Core {
             .forEach(loadRouteFile);
     }
 
+    /**
+     * @returns {WebsocketWebspace}
+     */
     get wsApp() {
         return this._wsApp;
     }
 
+    /**
+     * @param {WebsocketWebspace} value
+     */
     set wsApp(value) {
         this._wsApp = value;
     }
 
+    /**
+     * @returns {AppWebspace}
+     */
     get app() {
         return this._app;
     }
 
+    /**
+     * @param {AppWebspace} value
+     */
     set app(value) {
         this._app = value;
     }
