@@ -17,6 +17,9 @@ self.addEventListener('message', function(e) {
         verticesIndex++;
     }
 
+    console.log(JSON.stringify(options.vertices));
+
+
     // Send to frondend.
     self.postMessage({
         eventKey,
