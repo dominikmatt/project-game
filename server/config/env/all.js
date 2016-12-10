@@ -1,5 +1,6 @@
 'use strict';
 
 module.exports = {
-    port: 80
+    appPort: 80,
+    wsPort: 80
 };

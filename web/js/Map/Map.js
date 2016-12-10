@@ -1,10 +1,8 @@
 'use strict';
 
-var THREE = require('three');
 import scene from './../Scene.js';
 import camera from './../Camera.js';
 import TerrainGeometry from './TerrainGeometry.js';
-var Physijs = require('physijs-browserify')(THREE);
 
 /**
  * @type {Symbol}
@@ -78,14 +76,13 @@ class Map {
             this.terrrainGeometry.groundGeometry,
             groundMaterial,
             0, // mass
-            this.terrrainGeometry.mapWidth,
-            this.terrrainGeometry.mapLength
+            this.terrrainGeometry.mapWidth - 1,
+            this.terrrainGeometry.mapLength - 1
         );
         ground.rotation.x = Math.PI / -2;
         ground.receiveShadow = true;
         ground.name = 'Ground';
 
-        camera.camera.lookAt(ground.position);
         scene.scene.add( ground );
 
         this.onMapLoaded.call(null);

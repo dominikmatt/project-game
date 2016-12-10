@@ -1,6 +1,5 @@
 'use strict';
 
-var THREE = require('three');
 import scene from './Scene.js';
 
 /**
@@ -29,8 +28,6 @@ class Camera {
          * @private
          */
         this._camera = new THREE.PerspectiveCamera(15, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-        this.camera.position.set(0, 30, 50);
     }
 
     /**

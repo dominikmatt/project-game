@@ -19,7 +19,7 @@ module.exports = class AppWebspace {
         this.app = express();
 
         this.setServerConfig();
-        this.app.listen(configService.config.port);
+        this.app.listen(configService.config.appPort);
     }
 
     setServerConfig() {
