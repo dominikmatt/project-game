@@ -1,16 +1,7 @@
 'use strict';
 
 const express = require('express');
-
-/**
- * Output master file
- *
- * @param {IncomingMessage} req
- * @param {OutgoingMessage} res
- */
-const renderMaster = (req, res) => {
-    res.render('master.ejs');
-};
+const WebController = require('./../controller/WebController.js');
 
 /**
  * Initialize Router;
@@ -18,6 +9,6 @@ const renderMaster = (req, res) => {
  * @param {WebsocketWebspace} wsApp
  */
 module.exports.initialize = (app, wsApp) => {
-    app.app.get('/', renderMaster);
+    app.app.get('/', WebController.renderMasterAction);
     app.app.use(express.static('web/'));
 };
