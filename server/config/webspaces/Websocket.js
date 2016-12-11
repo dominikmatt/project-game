@@ -2,7 +2,6 @@
 
 const express = require('express');
 const socketIo = require('socket.io');
-const configService = require('./../../Services/configService.js');
 const app = express();
 const server = require('http').createServer(app);
 
@@ -14,6 +13,10 @@ const server = require('http').createServer(app);
  */
 module.exports = class WebSocketWebspace {
     constructor() {
+        const core = require('./../core.js');
+        this.configService = core.getService('config');
+        this.socketService = core.getService('socket');
+
         /**
          * @private
          */
@@ -42,14 +45,11 @@ module.exports = class WebSocketWebspace {
     startServer() {
         this.io = socketIo();
         this.io.listen(server);
-        server.listen(configService.config.wsPort);
-
-        this.io.on('connection', function(socket) {
-            console.log('connection');
-            socket.emit('news', {hello: 'world'});
-            socket.on('my other event', function(data) {
-                console.log(data);
-            });
+        server.listen(this.configService.config.wsPort);
+        this.socketService.io = this.io;
+        this.socketService.listenForConnection();
+        this.io.on('my other event', function(data) {
+            console.log(data);
         });
     }
 

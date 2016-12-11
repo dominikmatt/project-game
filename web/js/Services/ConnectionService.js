@@ -21,9 +21,9 @@ class ConnectionService {
 
         console.log('init connection');
         var socket = io('http://localhost:9005');
-        socket.on('news', function (data) {
+        socket.on('event.send', function (data) {
             console.log(data);
-            socket.emit('my other event', { my: 'data' });
+            socket.emit('event.get', { my: 'data' });
         });
     }
 

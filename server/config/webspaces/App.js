@@ -1,7 +1,6 @@
 'use strict';
 
 const express = require('express');
-const configService = require('./../../Services/configService.js');
 
 /**
  * Webspace for App.
@@ -11,6 +10,8 @@ const configService = require('./../../Services/configService.js');
  */
 module.exports = class AppWebspace {
     constructor() {
+        const core = require('./../core.js');
+        this.configService = core.getService('config');
         this.app = null;
         this.startServer();
     }
@@ -22,7 +23,7 @@ module.exports = class AppWebspace {
         this.app = express();
 
         this.setup();
-        this.app.listen(configService.config.appPort);
+        this.app.listen(this.configService.config.appPort);
     }
 
     /**

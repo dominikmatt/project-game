@@ -1,5 +1,8 @@
 'use strict';
 
+/**
+ * @type {WebController}
+ */
 module.exports = class WebController {
     constructor() {
 

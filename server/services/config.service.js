@@ -1,5 +1,6 @@
 'use strict';
 
+const BaseService = require('./BaseService.js');
 const _ = require('lodash');
 
 let ENV = 'dev';
@@ -9,36 +10,16 @@ if(process.env.NODE_ENV) {
 }
 
 /**
- * @type {Symbol}
- */
-const singleton = Symbol();
-
-/**
- * @type {Symbol}
- */
-const singletonEnforcer = Symbol();
-
-/**
  * All Configurations are stored in this service.
  */
-class ConfigService {
+class ConfigService extends BaseService {
     constructor() {
+        super('config');
         /**
          * @private
          */
         this._config = {};
         this.loadConfig();
-    }
-
-    /**
-     * @returns {Core}
-     */
-    static get instance() {
-        if (!this[singleton]) {
-            this[singleton] = new ConfigService(singletonEnforcer);
-        }
-
-        return this[singleton];
     }
 
     /**
@@ -66,4 +47,4 @@ class ConfigService {
     }
 };
 
-module.exports = ConfigService.instance;
+module.exports = ConfigService;

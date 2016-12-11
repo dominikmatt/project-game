@@ -1,18 +1,13 @@
 'use strict';
 
 const path = require('path');
-const fs = require('fs');
-const routesPath = path.join(__dirname, '../routes')
+const glob = require("glob");
+const serviesPath = path.join(__dirname, '../services/*.service.js');
 
 /**
  * @type {AppWebspace}
  */
-const WebSocketWebspace = require('./webspaces/Websocket.js');
-
-/**
- * @type {AppWebspace}
- */
-const AppWebspace = require('./webspaces/App.js');
+const WebSocketCore = require('./webspaces/WebspaceCore.js');
 
 /**
  * @type {Symbol}
@@ -35,7 +30,14 @@ class Core {
 
         this._wsApp = null;
         this._app = null;
-        this.startWebspaces();
+        this._services = {};
+    }
+
+    run() {
+        this.loadServices()
+            .then(() => {
+                this.webspaceCore = new WebSocketCore();
+            });
     }
 
     /**
@@ -50,26 +52,42 @@ class Core {
     }
 
     /**
-     * Start all Webspaces.
+     * Load service files from /services Folder.
      */
-    startWebspaces() {
-        this.wsApp = new WebSocketWebspace();
-        this.app = new AppWebspace();
+    loadServices() {
+        console.log('load services');
+        const loadServiceFiles = (resolve, error, files) => {
+            files.forEach((file, index) => {
+                const ServiceClass = require(file);
+                let serviceInstance = new ServiceClass();
 
-        this.loadRoutes();
+                console.log('init service:', serviceInstance.name);
+                this._services[serviceInstance.name] = serviceInstance;
+
+                if (index === files.length - 1) {
+                    resolve();
+                }
+            });
+        };
+
+        return new Promise((resolve) => {
+            glob(serviesPath, loadServiceFiles. bind(this, resolve));
+        });
     }
 
     /**
-     * Load all route files from /routes Folder.
+     * Returns Service by given Name.
+     *
+     * @param {string} name
+     * @returns {*}
      */
-    loadRoutes() {
-        const loadRouteFile = (file) => {
-            require(`${routesPath}/${file}`).initialize(this.app, this.wsApp);
-        };
+    getService(name) {
+        console.log(name);
+        if (this._services[name]) {
+            return this._services[name];
+        }
 
-        fs
-            .readdirSync(routesPath)
-            .forEach(loadRouteFile);
+        return false;
     }
 
     /**
