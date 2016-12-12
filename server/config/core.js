@@ -33,7 +33,7 @@ const singletonEnforcer = Symbol();
  */
 class Core {
     constructor(enforcer) {
-        if (enforcer != singletonEnforcer) throw "Cannot construct singleton Core";
+        if (enforcer !== singletonEnforcer) throw "Cannot construct singleton Core";
 
         this._wsApp = null;
         this._app = null;
