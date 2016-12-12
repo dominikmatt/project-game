@@ -3,21 +3,16 @@
 const BaseService = require('./BaseService.js');
 const _ = require('lodash');
 
-let ENV = 'dev';
-
-if(process.env.NODE_ENV) {
-    ENV = process.env.NODE_ENV;
-}
-
 /**
  * All Configurations are stored in this service.
  */
 class ConfigService extends BaseService {
-    constructor() {
+    constructor(env) {
         super('config');
         /**
          * @private
          */
+        this.env = env;
         this._config = {};
         this.loadConfig();
     }
@@ -28,7 +23,7 @@ class ConfigService extends BaseService {
     loadConfig() {
         this._config = _.extend(
             require('./../config/env/all'),
-            require('./../config/env/' + ENV) || {}
+            require('./../config/env/' + this.env) || {}
         );
     }
 

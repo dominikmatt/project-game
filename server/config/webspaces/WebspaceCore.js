@@ -15,7 +15,8 @@ const AppWebspace = require('./App.js');
 
 module.exports = class WebspaceCore {
     constructor() {
-        console.log('init Webspaces…');
+        this._core = require('./../core.js');
+        this._core.logger.info('init Webspaces…');
         this.startWebspaces();
     }
 

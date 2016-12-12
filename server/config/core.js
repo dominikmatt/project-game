@@ -1,8 +1,15 @@
 'use strict';
 
+const Logger = require('./../lib/Logger.js');
 const path = require('path');
 const glob = require("glob");
 const serviesPath = path.join(__dirname, '../services/*.service.js');
+
+let ENV = 'dev';
+
+if(process.env.NODE_ENV) {
+    ENV = process.env.NODE_ENV;
+}
 
 /**
  * @type {AppWebspace}
@@ -31,6 +38,7 @@ class Core {
         this._wsApp = null;
         this._app = null;
         this._services = {};
+        this._logger = new Logger(ENV);
     }
 
     run() {
@@ -55,13 +63,13 @@ class Core {
      * Load service files from /services Folder.
      */
     loadServices() {
-        console.log('load services');
+        this.logger.info('load services…');
+
         const loadServiceFiles = (resolve, error, files) => {
             files.forEach((file, index) => {
                 const ServiceClass = require(file);
-                let serviceInstance = new ServiceClass();
+                let serviceInstance = new ServiceClass(ENV);
 
-                console.log('init service:', serviceInstance.name);
                 this._services[serviceInstance.name] = serviceInstance;
 
                 if (index === files.length - 1) {
@@ -82,7 +90,6 @@ class Core {
      * @returns {*}
      */
     getService(name) {
-        console.log(name);
         if (this._services[name]) {
             return this._services[name];
         }
@@ -116,6 +123,13 @@ class Core {
      */
     set app(value) {
         this._app = value;
+    }
+
+    /**
+     * @returns {Logger}
+     */
+    get logger() {
+        return this._logger;
     }
 };
 

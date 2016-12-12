@@ -13,6 +13,8 @@ class SocketService extends BaseService {
     constructor() {
         super('socket');
 
+        this._core = require('./../config/core.js');
+
         /**
          * @type {Server}
          * @private
@@ -39,7 +41,7 @@ class SocketService extends BaseService {
      * @param {Server} socket
      */
     onNewConnection(socket) {
-        console.log('new connection…', socket.id);
+        this._core.logger.notice(`new connection by ${socket.id}`);
         this.store.add(socket.id, socket);
 
         // Bin disconnect event
