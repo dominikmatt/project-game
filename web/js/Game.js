@@ -3,6 +3,7 @@ import scene from './Scene.js';
 import renderer from './Renderer.js';
 import camera from './Camera.js';
 import player from './Player/Player.js';
+import connectionService from './Services/ConnectionService';
 
 /**
  * @type {Symbol}
